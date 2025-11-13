@@ -29,7 +29,7 @@ export class UserController {
     static async getUserById(req: Request, res: Response) {
         try {
             const { id } = req.params;
-            const user = await UserService.getUserById(BigInt(id));
+            const user = await UserService.getUserById(String(id));
             if (!user) {
                 return res.status(404).json({ error: 'Usuario no encontrado' });
             }
@@ -43,7 +43,7 @@ export class UserController {
         try {
             const { id } = req.params;
             const validatedData = updateUserSchema.parse(req.body);
-            const user = await UserService.updateUser(BigInt(id), validatedData);
+            const user = await UserService.updateUser(String(id), validatedData);
             res.status(200).json({
                 message: 'Usuario actualizado exitosamente',
                 data: user,
@@ -56,7 +56,7 @@ export class UserController {
     static async deleteUser(req: Request, res: Response) {
         try {
             const { id } = req.params;
-            await UserService.deleteUser(BigInt(id));
+            await UserService.deleteUser(String(id));
             res.status(200).json({ message: 'Usuario eliminado exitosamente' });
         } catch (error: any) {
             res.status(500).json({ error: error.message });

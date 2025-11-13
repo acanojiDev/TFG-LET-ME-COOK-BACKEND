@@ -11,6 +11,7 @@ export class UserService {
 	static async getAllUsers() {
 		return await prisma.users.findMany({
 			select: {
+				id:true,
 				username: true,
 				email: true,
 				photo_url: true,
@@ -22,7 +23,7 @@ export class UserService {
 		});
 	}
 
-	static async getUserById(id: bigint) {
+	static async getUserById(id: string) {
 		return await prisma.users.findUnique({
 			where: { id },
 			select: {
@@ -38,7 +39,7 @@ export class UserService {
 		});
 	}
 
-	static async updateUser(id: bigint, data: UpdateUserInput) {
+	static async updateUser(id: string, data: UpdateUserInput) {
 		return await prisma.users.update({
 			where: { id },
 			data,
@@ -55,7 +56,7 @@ export class UserService {
 		});
 	}
 
-	static async deleteUser(id: bigint) {
+	static async deleteUser(id: string) {
 		return await prisma.users.delete({
 			where: { id },
 		});
