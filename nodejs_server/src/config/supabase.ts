@@ -1,4 +1,7 @@
-import {createClient} from '@supabase/supabase-js';
+// src/config/supabase.ts
+import { createClient } from "@supabase/supabase-js";
 
-const supabaseUrl = process.env.DATABASE_URL;
-const supabaseDirectUrl = process.env.DIRECT_URL;
+export const supabase = createClient(
+  process.env.SUPABASE_URL!,
+  process.env.SUPABASE_ANON_KEY!
+);

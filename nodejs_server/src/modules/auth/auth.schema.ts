@@ -1,9 +1,15 @@
-//Zod de schemas para login/registro
-import {z} from  'zod';
+import {email, z} from "zod"
 
-/*
- * Schemas para signUpSchema y signIn 
- */
+export const signUpSchema = z.object({
+    email: z.email(),
+    password: z.string().min(6),
+    username: z.string().min(3),
+    photo_url: z.url().optional(),
+    bio: z.string().optional(),
+    location: z.string().optional
+});
 
-export type SignUpInput = z.infer<typeof signUpSchema>;
-export type SignInInput = z.infer<typeof signInSchema>;
+export const loginSchema = z.object({
+    email: z.email(),
+    password: z.string().min(6)
+});
