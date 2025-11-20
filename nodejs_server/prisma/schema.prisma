@@ -24,8 +24,8 @@ model Users {
   location      String?
   registered_at DateTime @default(now())
   updated_at    DateTime @updatedAt
-
-  posts Posts[]
+  likes         Likes[]
+  posts         Posts[]
 
   @@map("users")
 }
@@ -47,8 +47,20 @@ model Posts {
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 
-  user Users @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  user  Users   @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  likes Likes[]
 
   @@index([user_id])
   @@map("posts")
+}
+
+model Likes {
+  userId String @map("user_id")
+  postId String @map("post_id")
+
+  user Users @relation(fields: [userId], references: [id])
+  post Posts @relation(fields: [postId], references: [id])
+
+  @@id([userId, postId])
+  @@map("likes")
 }
