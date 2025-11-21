@@ -29,8 +29,7 @@ export class LikesController {
 					error: 'El postId debe ser un UUID válido'
 				});
 			}
-
-			console.log("ID DEL POST: " + postId)
+			
 			const likes = await LikeService.getAllLikesOfAPost(postId);
 			res.status(200).json({ data: likes });
 		} catch (error: any) {

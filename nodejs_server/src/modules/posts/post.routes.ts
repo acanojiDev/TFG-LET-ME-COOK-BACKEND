@@ -52,57 +52,9 @@ const router = Router();
 router.post('/', PostController.createPost);
 
 /**
- * @swagger
- * /api/posts:
- *   get:
- *     summary: Obtiene todas las publicaciones
- *     tags: [Posts]
- *     responses:
- *       200:
- *         description: Lista de publicaciones obtenida exitosamente
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 data:
- *                   type: array
- *                   items:
- *                     type: object
- *                     properties:
- *                       id:
- *                         type: string
- *                         format: uuid
- *                       user_id:
- *                         type: string
- *                         format: uuid
- *                       type:
- *                         type: string
- *                         enum: [recipe, photo, video, text]
- *                       content:
- *                         type: string
- *                       media_url:
- *                         type: string
- *                       created_at:
- *                         type: string
- *                         format: date-time
- *                       updated_at:
- *                         type: string
- *                         format: date-time
- *                       user:
- *                         type: object
- *                         properties:
- *                           id:
- *                             type: string
- *                             format: uuid
- *                           username:
- *                             type: string
- *                           photo_url:
- *                             type: string
- *       500:
- *         description: Error al obtener publicaciones
- */
-router.get('/', PostController.getAllPosts);
+ * TODO SWAGGER
+**/
+router.get('/', PostController.getPosts);
 
 /**
  * @swagger
