@@ -20,9 +20,17 @@ export class PostController {
 	static async getPosts(req: Request, res: Response) {
 		try {
 			let limit = req.query.limit as string | undefined;
+			let offset = req.query.offset as string | undefined;
+
+			console.log(offset)
+
 			const limitParsed =  typeof(limit) !== "undefined" ? parseInt(limit) : 20;
-			console.log("limiteParseado: " + limitParsed)
-			const posts = await PostService.getAllPosts(limitParsed);
+			const offsetParsed =  typeof(offset) !== "undefined" ? parseInt(offset) : 0;
+
+			console.log(offsetParsed)
+			
+
+			const posts = await PostService.getAllPosts(limitParsed, offsetParsed);
 			res.status(200).json({ data: posts });
 		} catch (error: any) {
 			res.status(500).json({ error: error.message });

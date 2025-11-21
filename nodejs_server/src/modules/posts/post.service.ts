@@ -19,9 +19,10 @@ export class PostService {
 		});
 	}
 
-	static async getAllPosts(limit: number) {
+	static async getAllPosts(limit: number, offset: number) {
 		return prisma.posts.findMany({
 			take: limit,
+			skip: offset,
 			orderBy: { created_at: 'desc' },
 			include: postInclude,
 			
