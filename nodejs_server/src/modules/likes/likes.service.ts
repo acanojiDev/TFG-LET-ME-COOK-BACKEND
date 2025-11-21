@@ -33,7 +33,7 @@ export class LikeService {
 		return prisma.likes.findMany({
 			where: {
 				userId: user_id
-			},include: likeInclude 
+			}
 		});
 	}
 

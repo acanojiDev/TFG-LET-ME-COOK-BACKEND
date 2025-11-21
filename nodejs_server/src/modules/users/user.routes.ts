@@ -56,7 +56,7 @@ const router = Router();
  *       400:
  *         description: Error en los datos
  */
-router.post('/', UserController.createUser);
+// TODO router.post('/', UserController.createUser);
 
 /**
  * @swagger
