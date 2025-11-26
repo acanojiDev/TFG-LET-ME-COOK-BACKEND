@@ -25,7 +25,6 @@ export class PostController {
 			const limitParsed =  Math.min((limit ? parseInt(limit) : 5), 15)/// pongo como máximo 15 posts a entregar.			
 
 			const allPosts = await PostService.getFeedPosts(limitParsed, cursor);
-			console.log(allPosts)
 			
 			const hasMore = allPosts.length > limitParsed; /// en caso de haber suficientes, se trae 6 o limit + 1
 			const posts = hasMore? allPosts.slice(0, limitParsed): allPosts;
