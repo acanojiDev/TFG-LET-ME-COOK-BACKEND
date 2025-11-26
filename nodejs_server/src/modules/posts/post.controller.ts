@@ -19,19 +19,25 @@ export class PostController {
 
 	static async getPosts(req: Request, res: Response) {
 		try {
-			let limit = req.query.limit as string | undefined;
-			let offset = req.query.offset as string | undefined;
+			const limit = req.query.limit as string | undefined;
+			const cursor = req.query.cursor as string | undefined
 
-			console.log(offset)
+			const limitParsed =  Math.min((limit ? parseInt(limit) : 5), 15)/// pongo como máximo 15 posts a entregar.			
 
-			const limitParsed =  typeof(limit) !== "undefined" ? parseInt(limit) : 20;
-			const offsetParsed =  typeof(offset) !== "undefined" ? parseInt(offset) : 0;
-
-			console.log(offsetParsed)
+			const allPosts = await PostService.getFeedPosts(limitParsed, cursor);
+			console.log(allPosts)
 			
+			const hasMore = allPosts.length > limitParsed; /// en caso de haber suficientes, se trae 6 o limit + 1
+			const posts = hasMore? allPosts.slice(0, limitParsed): allPosts;
 
-			const posts = await PostService.getAllPosts(limitParsed, offsetParsed);
-			res.status(200).json({ data: posts });
+			/// Se coge el último id de post, o ninguno
+			const nextCursor = posts.length > 0 ? posts[posts.length - 1].id: null 
+
+			res.status(200).json({
+				 	data: posts,
+					next_cursor: nextCursor,
+					has_more: hasMore
+				});
 		} catch (error: any) {
 			res.status(500).json({ error: error.message });
 		}
