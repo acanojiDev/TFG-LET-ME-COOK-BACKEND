@@ -9,7 +9,7 @@ export class LikesController {
 			const like = await LikeService.createLike(validatedData);
 
 			res.status(201).json({
-				message: 'Añadido like para la publicación: ' + like.postId,
+				message: 'Añadido like para la publicación: ' + like.post_id,
 				data: like,
 			});
 		} catch (error: any) {

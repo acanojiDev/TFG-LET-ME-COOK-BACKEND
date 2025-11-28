@@ -14,8 +14,7 @@ const postInclude = {
 export class PostService {
 	static async createPost(data: CreatePostInput) {
 		return prisma.posts.create({
-			data,
-			include: postInclude,
+			data
 		});
 	}
 
@@ -39,24 +38,20 @@ export class PostService {
 				cursor: { id: cursor},
 				skip: 1
 			}),
-			orderBy: { created_at: 'desc' },
-			include: postInclude,
-			
+			orderBy: { created_at: 'desc' }			
 		});
 	}
 
 	static async getPostById(id: string) {
 		return prisma.posts.findUnique({
-			where: { id },
-			include: postInclude,
+			where: { id }
 		});
 	}
 
 	static async updatePost(id: string, data: UpdatePostInput) {
 		return prisma.posts.update({
 			where: { id },
-			data,
-			include: postInclude,
+			data
 		});
 	}
 

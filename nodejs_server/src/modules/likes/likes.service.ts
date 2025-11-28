@@ -24,7 +24,7 @@ export class LikeService {
 	static async getAllLikesOfAPost(post_id: string) {
 		return prisma.likes.findMany({
 			where: {
-				postId: post_id
+				post_id: post_id
 			}
 		});
 	}
@@ -32,7 +32,7 @@ export class LikeService {
 	static async getAllLikesOfAUser(user_id: string) {
 		return prisma.likes.findMany({
 			where: {
-				userId: user_id
+				user_id: user_id
 			}
 		});
 	}
@@ -40,8 +40,8 @@ export class LikeService {
 	static async deleteLike(user_id: string, post_id: string) {
 		return prisma.likes.deleteMany({
 			where: {
-				postId: post_id,
-				userId: user_id
+				post_id: post_id,
+				user_id: user_id
 			}
 		});
 	}
