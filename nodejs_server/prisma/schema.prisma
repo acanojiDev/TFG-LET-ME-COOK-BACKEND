@@ -1,57 +1,29 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+datasource db {
+  provider = "postgresql"
+}
+
 generator client {
   provider = "prisma-client-js"
 }
 
-datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
-}
-
-model ai_analysis {
-  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  post_id       String    @db.Uuid
-  analysis_type String
-  result        Json?
-  created_at    DateTime? @default(now()) @db.Timestamptz(6)
-  posts         posts     @relation(fields: [post_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-}
-
-model ai_recipe_requests {
-  id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  user_id          String    @db.Uuid
-  ingredients      String
-  generated_recipe String?
-  created_at       DateTime? @default(now()) @db.Timestamptz(6)
-  users            users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-}
-
-model allergies {
-  id                    String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name                  String                  @unique
-  allergies_ingredients allergies_ingredients[]
-}
-
-model allergies_ingredients {
-  recipe_id  String    @db.Uuid
-  allergy_id String    @db.Uuid
-  contains   Boolean
-  allergies  allergies @relation(fields: [allergy_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  recipes    recipes   @relation(fields: [recipe_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-
-  @@id([recipe_id, allergy_id])
-}
-
 model comments {
-  id            String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  user_id       String          @db.Uuid
-  post_id       String          @db.Uuid
-  text          String
-  created_at    DateTime?       @default(now()) @db.Timestamptz(6)
-  posts         posts           @relation(fields: [post_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  users         users           @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  mentions      mentions[]
-  notifications notifications[]
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id    String    @db.Uuid
+  post_id    String    @db.Uuid
+  text       String
+  created_at DateTime? @default(now()) @db.Timestamptz(6)
+  posts      posts     @relation(fields: [post_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users      users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  /**
+   * mentions      mentions[]
+   * notifications notifications[]
+   */
 }
 
 model follows {
@@ -96,33 +68,6 @@ model likes {
   users   users  @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@id([user_id, post_id])
-}
-
-model mentions {
-  id                String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  mentioned_user_id String    @db.Uuid
-  post_id           String?   @db.Uuid
-  comment_id        String?   @db.Uuid
-  created_at        DateTime? @default(now()) @db.Timestamptz(6)
-  comments          comments? @relation(fields: [comment_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  users             users     @relation(fields: [mentioned_user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  posts             posts?    @relation(fields: [post_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-}
-
-model notifications {
-  id                                  String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  type                                String
-  message                             String
-  user_id                             String    @db.Uuid
-  actor_id                            String?   @db.Uuid
-  post_id                             String?   @db.Uuid
-  comment_id                          String?   @db.Uuid
-  read                                Boolean?  @default(false)
-  created_at                          DateTime? @default(now()) @db.Timestamptz(6)
-  users_notifications_actor_idTousers users?    @relation("notifications_actor_idTousers", fields: [actor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  comments                            comments? @relation(fields: [comment_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  posts                               posts?    @relation(fields: [post_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  users_notifications_user_idTousers  users     @relation("notifications_user_idTousers", fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
@@ -170,11 +115,13 @@ model posts {
   media_url        String?
   created_at       DateTime?          @default(now()) @db.Timestamptz(6)
   updated_at       DateTime?          @default(now()) @db.Timestamptz(6)
-  ai_analysis      ai_analysis[]
   comments         comments[]
   likes            likes[]
-  mentions         mentions[]
-  notifications    notifications[]
+  /**
+   * ai_analysis      ai_analysis[]
+   * mentions         mentions[]
+   * notifications    notifications[]
+   */
   post_media       post_media[]
   users            users              @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   recipes          recipes?
@@ -191,32 +138,19 @@ model recipe_ingredients {
   @@id([recipe_id, ingredient_id])
 }
 
-model recipe_tag_map {
-  recipe_id   String      @db.Uuid
-  tag_id      String      @db.Uuid
-  recipes     recipes     @relation(fields: [recipe_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  recipe_tags recipe_tags @relation(fields: [tag_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-
-  @@id([recipe_id, tag_id])
-}
-
-model recipe_tags {
-  id             String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name           String           @unique
-  recipe_tag_map recipe_tag_map[]
-}
-
 model recipes {
-  id                    String                  @id @db.Uuid
-  name                  String
-  description           String?
-  steps                 String?
-  difficulty            String?
-  time_required         Int?
-  allergies_ingredients allergies_ingredients[]
-  recipe_ingredients    recipe_ingredients[]
-  recipe_tag_map        recipe_tag_map[]
-  posts                 posts                   @relation(fields: [id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  id                 String               @id @db.Uuid
+  name               String
+  description        String?
+  steps              String?
+  difficulty         String?
+  time_required      Int?
+  recipe_ingredients recipe_ingredients[]
+  /**
+   * allergies_ingredients allergies_ingredients[]
+   * recipe_tag_map        recipe_tag_map[]
+   */
+  posts              posts                @relation(fields: [id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 }
 
 model user_saved_posts {
@@ -240,26 +174,29 @@ model user_settings {
 }
 
 model users {
-  id                                          String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  username                                    String               @unique
-  email                                       String               @unique
-  password_hash                               String
-  photo_url                                   String?
-  bio                                         String?
-  location                                    String?
-  registered_at                               DateTime?            @default(now()) @db.Timestamptz(6)
-  updated_at                                  DateTime?            @default(now()) @db.Timestamptz(6)
-  ai_recipe_requests                          ai_recipe_requests[]
-  comments                                    comments[]
-  follows_follows_followed_idTousers          follows[]            @relation("follows_followed_idTousers")
-  follows_follows_follower_idTousers          follows[]            @relation("follows_follower_idTousers")
-  group_users                                 group_users[]
-  likes                                       likes[]
-  mentions                                    mentions[]
-  notifications_notifications_actor_idTousers notifications[]      @relation("notifications_actor_idTousers")
-  notifications_notifications_user_idTousers  notifications[]      @relation("notifications_user_idTousers")
-  place_reviews                               place_reviews[]
-  posts                                       posts[]
-  user_saved_posts                            user_saved_posts[]
-  user_settings                               user_settings?
+  id                                 String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  username                           String             @unique
+  email                              String             @unique
+  password_hash                      String
+  photo_url                          String?
+  bio                                String?
+  location                           String?
+  birth_date                         DateTime           @db.Date
+  registered_at                      DateTime?          @default(now()) @db.Timestamptz(6)
+  updated_at                         DateTime?          @default(now()) @db.Timestamptz(6)
+  comments                           comments[]
+  follows_follows_followed_idTousers follows[]          @relation("follows_followed_idTousers")
+  follows_follows_follower_idTousers follows[]          @relation("follows_follower_idTousers")
+  group_users                        group_users[]
+  likes                              likes[]
+  place_reviews                      place_reviews[]
+  posts                              posts[]
+  user_saved_posts                   user_saved_posts[]
+  user_settings                      user_settings?
+  /**
+   * ai_recipe_requests                          ai_recipe_requests[]
+   * mentions                                    mentions[]
+   * notifications_notifications_actor_idTousers notifications[]      @relation("notifications_actor_idTousers")
+   * notifications_notifications_user_idTousers  notifications[]      @relation("notifications_user_idTousers")
+   */
 }

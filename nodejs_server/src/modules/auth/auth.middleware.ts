@@ -1,8 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
-import { AuthService } from '../modules/auth/auth.service';
+import { authService } from './Auth.service';
 import { error } from 'console';
 //Valida JWT
-const authService = new AuthService();
+const authService = new authService();
 
 export const authenticate = async(
     req: Request,
