@@ -1,6 +1,8 @@
 import express, { Express } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+dotenv.config();
+
 import userRoutes from './modules/users/user.routes';
 import postRoutes from './modules/posts/post.routes';
 import likesRoutes from './modules/likes/likes.routes';
@@ -9,7 +11,6 @@ import { errorHandler } from './middleware/errorHandler';
 import { swaggerSpec } from './config/swagger';
 import swaggerUi from 'swagger-ui-express';
 
-dotenv.config();
 
 const app: Express = express();
 const PORT = process.env.PORT || 3000;

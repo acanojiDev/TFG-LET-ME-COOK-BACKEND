@@ -6,6 +6,7 @@ export const createUserSchema = z.object({
 	password_hash: z.string().min(6, 'Contraseña debe tener al menos 6 caracteres'),
 	photo_url: z.string().optional(),
 	bio: z.string().optional(),
+	birth_date: z.date(),
 	location: z.string().optional(),
 });
 
@@ -15,6 +16,7 @@ export const updateUserSchema = z.object({
 	password_hash: z.string().min(6).optional(),
 	photo_url: z.string().optional(),
 	bio: z.string().optional(),
+	birth_date: z.date(),
 	location: z.string().optional(),
 });
 

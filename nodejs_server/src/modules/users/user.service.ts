@@ -1,4 +1,4 @@
-import prisma from "../../config/database";
+import { prisma } from "../../config/database";
 import { CreateUserInput, UpdateUserInput } from "./user.schema";
 
 export class UserService {
@@ -18,6 +18,7 @@ export class UserService {
 				bio: true,
 				location: true,
 				registered_at: true,
+				birth_date: true,
 				updated_at: true,
 			},
 		});
@@ -34,6 +35,7 @@ export class UserService {
 				bio: true,
 				location: true,
 				registered_at: true,
+				birth_date: true,
 				updated_at: true,
 			},
 		});
@@ -51,6 +53,7 @@ export class UserService {
 				bio: true,
 				location: true,
 				registered_at: true,
+				birth_date: true,
 				updated_at: true,
 			},
 		});

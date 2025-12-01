@@ -1,4 +1,4 @@
-import prisma from '../../config/database';
+import { prisma } from '../../config/database';
 import { CreatePostInput, UpdatePostInput } from './post.schema';
 
 const postInclude = {
@@ -20,17 +20,17 @@ export class PostService {
 
 	/**
 	 * Buscamos por limite + 1 para comporbar si quedan mas posts.
-	 * 
-	 * 
+	 *
+	 *
 	 * Se usa el spread para comprobar si existe el cursor o no
-	 * Si existe cursor, se añade a la query, 
+	 * Si existe cursor, se añade a la query,
 	 * y además skipeamos uno, que sería el último de la anterior query
-	 * 
+	 *
 	 * @param limit 	número de posts a entregar ( si hay )
 	 * @param cursor   ID del último post que recibió el usuario
-	 * @returns 
+	 * @returns
 	 */
-		
+
 	static async getFeedPosts(limit: number, cursor: string | undefined) {
 		return prisma.posts.findMany({
 			take: limit + 1,
@@ -38,7 +38,7 @@ export class PostService {
 				cursor: { id: cursor},
 				skip: 1
 			}),
-			orderBy: { created_at: 'desc' }			
+			orderBy: { created_at: 'desc' }
 		});
 	}
 
