@@ -2,13 +2,20 @@ import { prisma } from '../../config/database';
 import { CreatePostInput, UpdatePostInput } from './post.schema';
 
 const postInclude = {
-	user: {
+	users: {
 		select: {
 			id: true,
 			username: true,
 			photo_url: true,
 		},
 	},
+	/// Solo devuelve el numero de likes y comentarios.
+	_count: {
+		select: {
+		  comments: true,
+		  likes: true,
+		}
+	  }
 };
 
 export class PostService {
@@ -27,18 +34,22 @@ export class PostService {
 	 * y además skipeamos uno, que sería el último de la anterior query
 	 *
 	 * @param limit 	número de posts a entregar ( si hay )
-	 * @param cursor   ID del último post que recibió el usuario
+	 * @param cursor   created_at del último post que recibió el usuario
 	 * @returns
 	 */
 
-	static async getFeedPosts(limit: number, cursor: string | undefined) {
+	static async getFeedPosts(limit: number, cursor?: string) {
 		return prisma.posts.findMany({
-			take: limit + 1,
-			...(cursor && {
-				cursor: { id: cursor},
-				skip: 1
-			}),
-			orderBy: { created_at: 'desc' }
+		  take: limit + 1,
+		  orderBy: { created_at: 'desc' },
+		  ...(cursor && {
+			where: {
+			  created_at: { 
+				lt: new Date(cursor), // menor que el cursor
+			  },
+			},
+		  }),
+		  include: postInclude
 		});
 	}
 

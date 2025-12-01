@@ -20,7 +20,9 @@ export class PostController {
 	static async getPosts(req: Request, res: Response) {
 		try {
 			const limit = req.query.limit as string | undefined;
-			const cursor = req.query.cursor as string | undefined
+
+			/// el created_at del último post | undefined
+			const cursor = req.query.cursor as string | undefined;
 
 			const limitParsed =  Math.min((limit ? parseInt(limit) : 5), 15)/// pongo como máximo 15 posts a entregar.			
 
@@ -30,7 +32,7 @@ export class PostController {
 			const posts = hasMore? allPosts.slice(0, limitParsed): allPosts;
 
 			/// Se coge el último id de post, o ninguno
-			const nextCursor = posts.length > 0 ? posts[posts.length - 1].id: null 
+			const nextCursor = posts.length > 0 ? posts[posts.length - 1].created_at: null 
 
 			res.status(200).json({
 				 	data: posts,
