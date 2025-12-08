@@ -45,5 +45,16 @@ export class LikeService {
 			}
 		});
 	}
+
+	static async getLike(user_id: string, post_id: string){
+     return prisma.likes.findUnique({
+			where: {
+        user_id_post_id: {
+					user_id: user_id,
+					post_id: post_id
+				}
+			}
+		})
+	}
 }
 

@@ -1,15 +1,24 @@
 import { Request, Response } from "express";
 import { createLikeSchema } from "./likes.schema";
 import { LikeService } from "./likes.service";
-
-const uuidRegexVerify =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+import { PostService } from "../posts/post.service";
+import { UserService } from "../users/user.service";
 
 export class LikesController {
+  /// Crear like
   static async createLike(req: Request, res: Response) {
     try {
       const validatedData = createLikeSchema.parse(req.body);
+      
+      const likeExistente = await LikeService.getLike(validatedData.user_id, validatedData.post_id)
+
+      if(likeExistente){
+        return res.status(200).json({ message: "El like ya existia." });
+      }
+      
       const like = await LikeService.createLike(validatedData);
+      
+
       res.status(201).json({
         message: "Añadido like para la publicación: " + like.post_id,
         data: like,
@@ -23,10 +32,13 @@ export class LikesController {
   static async getAllLikesOfAPost(req: Request, res: Response) {
     try {
       const { postId } = req.params;
+
       // Validar que postId sea un UUID válido
-      if (!uuidRegexVerify.test(postId)) {
+      const post = PostService.getPostById(postId);
+
+      if (!post) {
         return res.status(400).json({
-          error: "El postId debe ser un UUID válido",
+          error: "No existe el post",
         });
       }
 
@@ -42,9 +54,11 @@ export class LikesController {
     try {
       const { userId } = req.params;
       // Validar que userId sea un UUID válido
-      if (!uuidRegexVerify.test(userId)) {
+      const user = UserService.getUserById(userId);
+
+      if (!user) {
         return res.status(400).json({
-          error: "El userId debe ser un UUID válido",
+          error: "El usuario no existe",
         });
       }
 
@@ -60,20 +74,18 @@ export class LikesController {
       const { userId, postId } = req.params;
 
       // Validar que userId y postId sean UUIDs válidos
-      if (!uuidRegexVerify.test(userId)) {
-        return res.status(400).json({
-          error: "El userId debe ser un UUID válido",
-        });
-      }
-      if (!uuidRegexVerify.test(postId)) {
-        return res
-          .status(400)
-          .json({ error: "El postId debe ser un UUID válido" });
+
+      const user = UserService.getUserById(userId);
+
+      const likeExistente = await LikeService.getLike(userId, postId)
+
+      if(!likeExistente){
+        return res.status(200).json({ message: "El like ya no existia." });
       }
 
       await LikeService.deleteLike(userId, postId);
 
-      res.status(200).json({ message: "Publicación eliminada exitosamente" });
+      res.status(200).json({ message: "Like eliminado exitosamente" });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
