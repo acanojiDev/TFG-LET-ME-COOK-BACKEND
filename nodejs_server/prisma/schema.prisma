@@ -108,24 +108,25 @@ model post_media {
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model posts {
-  id               String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  user_id          String             @db.Uuid
-  type             String
-  content          String?
-  media_url        String?
-  created_at       DateTime?          @default(now()) @db.Timestamptz(6)
-  updated_at       DateTime?          @default(now()) @db.Timestamptz(6)
-  comments         comments[]
-  likes            likes[]
+  id                 String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id            String               @db.Uuid
+  type               String
+  content            String?
+  media_url          String?
+  created_at         DateTime?            @default(now()) @db.Timestamptz(6)
+  updated_at         DateTime?            @default(now()) @db.Timestamptz(6)
+  comments           comments[]
+  likes              likes[]
   /**
    * ai_analysis      ai_analysis[]
    * mentions         mentions[]
    * notifications    notifications[]
    */
-  post_media       post_media[]
-  users            users              @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  recipes          recipes?
-  user_saved_posts user_saved_posts[]
+  post_media         post_media[]
+  users              users                @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  recipes            recipes?
+  user_saved_posts   user_saved_posts[]
+  user_viewed_posts  user_viewed_posts[]
 }
 
 model recipe_ingredients {
@@ -162,6 +163,16 @@ model user_saved_posts {
   @@id([user_id, post_id])
 }
 
+model user_viewed_posts {
+  user_id   String    @db.Uuid
+  post_id   String    @db.Uuid
+  viewed_at DateTime? @default(now()) @db.Timestamptz(6)
+  posts     posts     @relation(fields: [post_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users     users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([user_id, post_id])
+}
+
 model user_settings {
   user_id         String   @id @db.Uuid
   is_private      Boolean? @default(false)
@@ -174,24 +185,25 @@ model user_settings {
 }
 
 model users {
-  id                                 String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  username                           String             @unique
-  email                              String             @unique
+  id                                 String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  username                           String               @unique
+  email                              String               @unique
   password_hash                      String
   photo_url                          String?
   bio                                String?
   location                           String?
-  birth_date                         DateTime           @db.Date
-  registered_at                      DateTime?          @default(now()) @db.Timestamptz(6)
-  updated_at                         DateTime?          @default(now()) @db.Timestamptz(6)
+  birth_date                         DateTime             @db.Date
+  registered_at                      DateTime?            @default(now()) @db.Timestamptz(6)
+  updated_at                         DateTime?            @default(now()) @db.Timestamptz(6)
   comments                           comments[]
-  follows_follows_followed_idTousers follows[]          @relation("follows_followed_idTousers")
-  follows_follows_follower_idTousers follows[]          @relation("follows_follower_idTousers")
+  follows_follows_followed_idTousers follows[]            @relation("follows_followed_idTousers")
+  follows_follows_follower_idTousers follows[]            @relation("follows_follower_idTousers")
   group_users                        group_users[]
   likes                              likes[]
   place_reviews                      place_reviews[]
   posts                              posts[]
   user_saved_posts                   user_saved_posts[]
+  user_viewed_posts                  user_viewed_posts[]
   user_settings                      user_settings?
   /**
    * ai_recipe_requests                          ai_recipe_requests[]

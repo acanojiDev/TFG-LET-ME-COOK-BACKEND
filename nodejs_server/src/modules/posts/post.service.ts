@@ -12,10 +12,10 @@ const postInclude = {
 	/// Solo devuelve el numero de likes y comentarios.
 	_count: {
 		select: {
-		  comments: true,
-		  likes: true,
+			comments: true,
+			likes: true,
 		}
-	  }
+	}
 };
 
 export class PostService {
@@ -34,22 +34,35 @@ export class PostService {
 	 * y además skipeamos uno, que sería el último de la anterior query
 	 *
 	 * @param limit 	número de posts a entregar ( si hay )
+	 * @param user_id 	ID del usuario para filtrar posts ya vistos
 	 * @param cursor   created_at del último post que recibió el usuario
 	 * @returns
 	 */
 
-	static async getFeedPosts(limit: number, cursor?: string) {
+	static async getFeedPosts(limit: number, user_id: string, cursor?: string) {
 		return prisma.posts.findMany({
-		  take: limit + 1,
-		  orderBy: { created_at: 'desc' },
-		  ...(cursor && {
+			take: limit + 1,
+			orderBy: { created_at: 'desc' },
 			where: {
-			  created_at: { 
-				lt: new Date(cursor), // menor que el cursor
-			  },
+				...(cursor && {
+					created_at: {
+						lt: new Date(cursor), // menor que el cursor
+					},
+				}),
+				// Excluir posts creados por el mismo usuario
+				user_id: {
+					not: user_id
+				},
+				// Excluir posts que el usuario ya ha visto
+				NOT: {
+					user_viewed_posts: {
+						some: {
+							user_id: user_id
+						}
+					}
+				}
 			},
-		  }),
-		  include: postInclude
+			include: postInclude
 		});
 	}
 

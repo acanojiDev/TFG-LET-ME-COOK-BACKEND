@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { createPostSchema, updatePostSchema } from './post.schema';
 import { PostService } from './post.service';
+import { UserService } from '../users/user.service';
 
 export class PostController {
 	static async createPost(req: Request, res: Response) {
@@ -20,25 +21,41 @@ export class PostController {
 	static async getPosts(req: Request, res: Response) {
 		try {
 			const limit = req.query.limit as string | undefined;
+			const user_id = req.query.user_id as string | undefined;
 
-			/// el created_at del último post | undefined
+			/// el created_at del ultimo post | undefined
 			const cursor = req.query.cursor as string | undefined;
 
-			const limitParsed =  Math.min((limit ? parseInt(limit) : 5), 15)/// pongo como máximo 15 posts a entregar.			
+			// Validar que user_id este presente
+			if (!user_id) {
+				return res.status(400).json({
+					error: 'El parámetro user_id es requerido'
+				});
+			}
 
-			const allPosts = await PostService.getFeedPosts(limitParsed, cursor);
-			
+			// Validar formato UUID básico
+			const user = await UserService.getUserById(user_id)
+			if (!user) {
+				return res.status(400).json({
+					error: 'El usuario no existe'
+				});
+			}
+
+			const limitParsed = Math.min((limit ? parseInt(limit) : 5), 15)/// pongo como máximo 15 posts a entregar.			
+
+			const allPosts = await PostService.getFeedPosts(limitParsed, user_id, cursor);
+
 			const hasMore = allPosts.length > limitParsed; /// en caso de haber suficientes, se trae 6 o limit + 1
-			const posts = hasMore? allPosts.slice(0, limitParsed): allPosts;
+			const posts = hasMore ? allPosts.slice(0, limitParsed) : allPosts;
 
 			/// Se coge el último id de post, o ninguno
-			const nextCursor = posts.length > 0 ? posts[posts.length - 1].created_at: null 
+			const nextCursor = posts.length > 0 ? posts[posts.length - 1].created_at : null
 
 			res.status(200).json({
-				 	data: posts,
-					next_cursor: nextCursor,
-					has_more: hasMore
-				});
+				data: posts,
+				next_cursor: nextCursor,
+				has_more: hasMore
+			});
 		} catch (error: any) {
 			res.status(500).json({ error: error.message });
 		}
