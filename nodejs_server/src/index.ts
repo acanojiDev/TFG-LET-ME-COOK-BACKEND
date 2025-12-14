@@ -6,6 +6,7 @@ dotenv.config();
 import userRoutes from './modules/users/user.routes';
 import postRoutes from './modules/posts/post.routes';
 import likesRoutes from './modules/likes/likes.routes';
+import placesRoutes from './modules/places/places.routes';
 
 import { errorHandler } from './middleware/errorHandler';
 import { swaggerSpec } from './config/swagger';
@@ -26,6 +27,7 @@ app.use(express.json());
 app.use('/api/users', userRoutes);
 app.use('/api/posts', postRoutes);
 app.use('/api/likes', likesRoutes);
+app.use('/api/places', placesRoutes);
 
 
 // Ruta de prueba
