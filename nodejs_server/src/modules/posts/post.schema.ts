@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 export const createPostSchema = z.object({
+	user_id: z.string().uuid({ message: "User ID must be a valid UUID" }),
 	type: z.string().min(1, { message: "Type is required" }),
 	content: z.string().optional(),
 	media_url: z.string().optional(),
