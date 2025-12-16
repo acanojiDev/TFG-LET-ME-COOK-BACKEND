@@ -1,21 +1,20 @@
-import { z } from 'zod';
-
-const postTypeEnum = z.enum(['recipe', 'photo', 'video', 'text']);
+import { z } from "zod";
 
 export const createPostSchema = z.object({
-	user_id: z.uuid('user_id debe ser un UUID válido'),
-	type: postTypeEnum,
-	content: z.string().min(1, 'El contenido no puede estar vacío').optional(),
-	media_url: z.url('URL de media inválida').optional(),
+	type: z.string().min(1, { message: "Type is required" }),
+	content: z.string().optional(),
+	media_url: z.string().optional(),
 });
 
 export const updatePostSchema = z.object({
-	user_id: z.uuid('user_id debe ser un UUID válido').optional(),
-	type: postTypeEnum.optional(),
-	content: z.string().min(1, 'El contenido no puede estar vacío').optional(),
-	media_url: z.url('URL de media inválida').optional(),
+	content: z.string().optional(),
+	media_url: z.string().optional(),
+});
+
+export const savePostSchema = z.object({
+	post_id: z.string().uuid({ message: "Post ID must be a valid UUID" }),
 });
 
 export type CreatePostInput = z.infer<typeof createPostSchema>;
 export type UpdatePostInput = z.infer<typeof updatePostSchema>;
-
+export type SavePostInput = z.infer<typeof savePostSchema>;

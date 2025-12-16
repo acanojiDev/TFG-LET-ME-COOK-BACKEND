@@ -59,3 +59,17 @@ export const getPlacesQuerySchema = z.object({
 export type CreatePlaceInput = z.infer<typeof createPlaceSchema>;
 export type UpdatePlaceInput = z.infer<typeof updatePlaceSchema>;
 export type GetPlacesQuery = z.infer<typeof getPlacesQuerySchema>;
+
+export const createReviewSchema = z.object({
+    user_id: z.string().uuid({ message: "User ID must be a valid UUID" }),
+    rating: z.number().min(0).max(5),
+    comment: z.string().optional(),
+});
+
+export const updateReviewSchema = z.object({
+    rating: z.number().min(0).max(5).optional(),
+    comment: z.string().optional(),
+});
+
+export type CreateReviewInput = z.infer<typeof createReviewSchema>;
+export type UpdateReviewInput = z.infer<typeof updateReviewSchema>;

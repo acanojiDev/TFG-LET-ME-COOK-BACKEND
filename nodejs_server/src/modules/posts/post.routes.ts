@@ -49,7 +49,13 @@ const router = Router();
  *       400:
  *         description: Error en los datos
  */
-router.post('/', PostController.createPost);
+
+
+router.post("/:id/save", PostController.save);
+router.delete("/:id/save/:postId", PostController.unsave);
+router.get("/:id/saved", PostController.getSaved);
+
+router.post("/", PostController.createPost);
 
 /**
  * TODO SWAGGER

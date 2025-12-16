@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { createPlaceSchema, updatePlaceSchema, getPlacesQuerySchema } from "./places.schema";
+import { createPlaceSchema, updatePlaceSchema, getPlacesQuerySchema, createReviewSchema, updateReviewSchema } from "./places.schema";
 import { PlaceService } from "./places.service";
 
 export class PlaceController {
@@ -95,6 +95,38 @@ export class PlaceController {
             await PlaceService.deletePlace(id);
 
             res.status(200).json({ message: 'Lugar eliminado exitosamente' });
+        } catch (error: any) {
+            res.status(500).json({ error: error.message });
+        }
+    }
+
+    static async addReview(req: Request, res: Response) {
+        try {
+            const { id } = req.params; // placeId
+            const data = createReviewSchema.parse(req.body);
+            const review = await PlaceService.addReview(id, data);
+            res.json(review);
+        } catch (error: any) {
+            res.status(400).json({ error: error.message });
+        }
+    }
+
+    static async updateReview(req: Request, res: Response) {
+        try {
+            const { reviewId } = req.params;
+            const data = updateReviewSchema.parse(req.body);
+            const review = await PlaceService.updateReview(reviewId, data);
+            res.json(review);
+        } catch (error: any) {
+            res.status(400).json({ error: error.message });
+        }
+    }
+
+    static async deleteReview(req: Request, res: Response) {
+        try {
+            const { reviewId } = req.params;
+            await PlaceService.deleteReview(reviewId);
+            res.status(204).send();
         } catch (error: any) {
             res.status(500).json({ error: error.message });
         }

@@ -1,8 +1,70 @@
-import { Request, Response } from 'express';
+import { Request, Response, NextFunction } from 'express';
 import { UserService } from '../users/user.service';
-import { createUserSchema, updateUserSchema } from './user.schema';
+import { createUserSchema, updateUserSchema, followUserSchema, updateSettingsSchema } from './user.schema';
 
 export class UserController {
+    static async follow(req: Request, res: Response, next: NextFunction) {
+        try {
+            const { id } = req.params; // follower_id (usually from auth token, but using params for now as requested context implies general access)
+            const { followed_id } = followUserSchema.parse(req.body);
+            await UserService.followUser(id, followed_id);
+            res.status(200).json({ message: "User followed" });
+        } catch (error) {
+            next(error);
+        }
+    }
+
+    static async unfollow(req: Request, res: Response, next: NextFunction) {
+        try {
+            const { id, followedId } = req.params;
+            await UserService.unfollowUser(id, followedId);
+            res.status(200).json({ message: "User unfollowed" });
+        } catch (error) {
+            next(error);
+        }
+    }
+
+    static async getFollowers(req: Request, res: Response, next: NextFunction) {
+        try {
+            const { id } = req.params;
+            const followers = await UserService.getFollowers(id);
+            res.json(followers);
+        } catch (error) {
+            next(error);
+        }
+    }
+
+    static async getFollowing(req: Request, res: Response, next: NextFunction) {
+        try {
+            const { id } = req.params;
+            const following = await UserService.getFollowing(id);
+            res.json(following);
+        } catch (error) {
+            next(error);
+        }
+    }
+
+    static async updateSettings(req: Request, res: Response, next: NextFunction) {
+        try {
+            const { id } = req.params;
+            const data = updateSettingsSchema.parse(req.body);
+            const settings = await UserService.updateSettings(id, data);
+            res.json(settings);
+        } catch (error) {
+            next(error);
+        }
+    }
+
+    static async getSettings(req: Request, res: Response, next: NextFunction) {
+        try {
+            const { id } = req.params;
+            const settings = await UserService.getSettings(id);
+            res.json(settings);
+        } catch (error) {
+            next(error);
+        }
+    }
+
 
     static async getAllUsers(req: Request, res: Response) {
         try {

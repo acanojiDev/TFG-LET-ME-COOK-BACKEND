@@ -19,6 +19,51 @@ const postInclude = {
 };
 
 export class PostService {
+	static async savePost(userId: string, postId: string) {
+		return await prisma.user_saved_posts.create({
+			data: {
+				user_id: userId,
+				post_id: postId,
+			},
+		});
+	}
+
+	static async unsavePost(userId: string, postId: string) {
+		return await prisma.user_saved_posts.delete({
+			where: {
+				user_id_post_id: {
+					user_id: userId,
+					post_id: postId,
+				},
+			},
+		});
+	}
+
+	static async getSavedPosts(userId: string) {
+		return await prisma.user_saved_posts.findMany({
+			where: { user_id: userId },
+			include: {
+				posts: {
+					include: {
+						users: {
+							select: {
+								id: true,
+								username: true,
+								photo_url: true,
+							},
+						},
+						_count: {
+							select: {
+								comments: true,
+								likes: true,
+							},
+						},
+					},
+				},
+			},
+		});
+	}
+
 	static async createPost(data: CreatePostInput) {
 		return prisma.posts.create({
 			data

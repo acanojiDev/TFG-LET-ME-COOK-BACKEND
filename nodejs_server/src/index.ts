@@ -7,6 +7,9 @@ import userRoutes from './modules/users/user.routes';
 import postRoutes from './modules/posts/post.routes';
 import likesRoutes from './modules/likes/likes.routes';
 import placesRoutes from './modules/places/places.routes';
+import commentRoutes from './modules/comments/comments.routes';
+import groupRoutes from './modules/groups/groups.routes';
+import recipeRoutes from './modules/recipes/recipes.routes';
 
 import { errorHandler } from './middleware/errorHandler';
 import { swaggerSpec } from './config/swagger';
@@ -28,6 +31,9 @@ app.use('/api/users', userRoutes);
 app.use('/api/posts', postRoutes);
 app.use('/api/likes', likesRoutes);
 app.use('/api/places', placesRoutes);
+app.use('/api/comments', commentRoutes);
+app.use('/api/groups', groupRoutes);
+app.use('/api/recipes', recipeRoutes);
 
 
 // Ruta de prueba

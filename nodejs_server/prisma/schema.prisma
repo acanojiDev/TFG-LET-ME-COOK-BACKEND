@@ -6,10 +6,11 @@
 
 datasource db {
   provider = "postgresql"
+  schemas  = ["public"]
 }
 
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
 }
 
 model comments {
@@ -24,6 +25,8 @@ model comments {
    * mentions      mentions[]
    * notifications notifications[]
    */
+
+  @@schema("public")
 }
 
 model follows {
@@ -34,6 +37,7 @@ model follows {
   users_follows_follower_idTousers users     @relation("follows_follower_idTousers", fields: [follower_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@id([follower_id, followed_id])
+  @@schema("public")
 }
 
 model group_users {
@@ -44,6 +48,7 @@ model group_users {
   users     users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@id([group_id, user_id])
+  @@schema("public")
 }
 
 model groups {
@@ -52,6 +57,8 @@ model groups {
   description String?
   created_at  DateTime?     @default(now()) @db.Timestamptz(6)
   group_users group_users[]
+
+  @@schema("public")
 }
 
 model ingredients {
@@ -59,6 +66,8 @@ model ingredients {
   name               String               @unique
   unit               String
   recipe_ingredients recipe_ingredients[]
+
+  @@schema("public")
 }
 
 model likes {
@@ -68,6 +77,7 @@ model likes {
   users   users  @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@id([user_id, post_id])
+  @@schema("public")
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
@@ -80,6 +90,8 @@ model place_reviews {
   created_at DateTime? @default(now()) @db.Timestamptz(6)
   places     places    @relation(fields: [place_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   users      users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@schema("public")
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
@@ -94,6 +106,8 @@ model places {
   open          Boolean?
   type          String?
   place_reviews place_reviews[]
+
+  @@schema("public")
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
@@ -104,6 +118,8 @@ model post_media {
   media_type String?
   position   Int?    @default(0)
   posts      posts   @relation(fields: [post_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@schema("public")
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
@@ -127,6 +143,8 @@ model posts {
   recipes            recipes?
   user_saved_posts   user_saved_posts[]
   user_viewed_posts  user_viewed_posts[]
+
+  @@schema("public")
 }
 
 model recipe_ingredients {
@@ -137,6 +155,7 @@ model recipe_ingredients {
   recipes       recipes     @relation(fields: [recipe_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@id([recipe_id, ingredient_id])
+  @@schema("public")
 }
 
 model recipes {
@@ -152,6 +171,8 @@ model recipes {
    * recipe_tag_map        recipe_tag_map[]
    */
   posts              posts                @relation(fields: [id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@schema("public")
 }
 
 model user_saved_posts {
@@ -161,6 +182,7 @@ model user_saved_posts {
   users   users  @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@id([user_id, post_id])
+  @@schema("public")
 }
 
 model user_viewed_posts {
@@ -171,6 +193,7 @@ model user_viewed_posts {
   users     users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@id([user_id, post_id])
+  @@schema("public")
 }
 
 model user_settings {
@@ -182,13 +205,13 @@ model user_settings {
   notify_follows  Boolean? @default(true)
   theme           String?  @default("light")
   users           users    @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@schema("public")
 }
 
 model users {
   id                                 String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   username                           String               @unique
-  email                              String               @unique
-  password_hash                      String
   photo_url                          String?
   bio                                String?
   location                           String?
@@ -211,4 +234,6 @@ model users {
    * notifications_notifications_actor_idTousers notifications[]      @relation("notifications_actor_idTousers")
    * notifications_notifications_user_idTousers  notifications[]      @relation("notifications_user_idTousers")
    */
+
+  @@schema("public")
 }

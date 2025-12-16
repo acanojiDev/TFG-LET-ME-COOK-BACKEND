@@ -22,3 +22,20 @@ export const updateUserSchema = z.object({
 
 export type CreateUserInput = z.infer<typeof createUserSchema>;
 export type UpdateUserInput = z.infer<typeof updateUserSchema>;
+
+export const followUserSchema = z.object({
+	followed_id: z.string().uuid({ message: "Followed ID must be a valid UUID" }),
+});
+
+export const updateSettingsSchema = z.object({
+	is_private: z.boolean().optional(),
+	language: z.string().optional(),
+	notify_likes: z.boolean().optional(),
+	notify_comments: z.boolean().optional(),
+	notify_follows: z.boolean().optional(),
+	theme: z.string().optional(),
+});
+
+export type FollowUserInput = z.infer<typeof followUserSchema>;
+export type UpdateSettingsInput = z.infer<typeof updateSettingsSchema>;
+

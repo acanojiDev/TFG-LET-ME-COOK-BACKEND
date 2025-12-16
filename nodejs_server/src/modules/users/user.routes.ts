@@ -208,4 +208,13 @@ router.put('/:id', UserController.updateUser);
  */
 router.delete('/:id', UserController.deleteUser);
 
+router.post("/:id/follow", UserController.follow);
+router.delete("/:id/follow/:followedId", UserController.unfollow);
+router.get("/:id/followers", UserController.getFollowers);
+router.get("/:id/following", UserController.getFollowing);
+
+// Settings
+router.patch("/:id/settings", UserController.updateSettings);
+router.get("/:id/settings", UserController.getSettings);
+
 export default router;

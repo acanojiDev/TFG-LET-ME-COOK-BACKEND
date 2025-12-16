@@ -1,12 +1,14 @@
 import { prisma } from "../../config/database";
-import { CreatePlaceInput, UpdatePlaceInput } from "./places.schema";
+
 import { Prisma } from "@prisma/client";
+import { CreatePlaceInput, UpdatePlaceInput, CreateReviewInput, UpdateReviewInput } from "./places.schema";
+
 
 export class PlaceService {
 
     /**
      * Obtiene places con filtros y paginación por cursor
-     * 
+     *
      * @param limit número de places a entregar
      * @param cursor ID del último place de la página anterior
      * @param filters filtros opcionales (minRating, maxDistance, type, openOnly, userLat, userLon)
@@ -139,5 +141,30 @@ export class PlaceService {
             where: { id },
         });
     }
+
+    static async addReview(placeId: string, data: CreateReviewInput) {
+        return await prisma.place_reviews.create({
+            data: {
+                place_id: placeId,
+                ...data,
+            },
+        });
+    }
+
+    static async updateReview(reviewId: string, data: UpdateReviewInput) {
+        return await prisma.place_reviews.update({
+            where: { id: reviewId },
+            data,
+        });
+    }
+
+    static async deleteReview(reviewId: string) {
+        return await prisma.place_reviews.delete({
+            where: { id: reviewId },
+        });
+    }
+
+
+
 
 }

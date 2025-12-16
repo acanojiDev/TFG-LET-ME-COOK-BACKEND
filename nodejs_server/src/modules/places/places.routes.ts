@@ -28,4 +28,8 @@ router.put('/:id', PlaceController.updatePlace);
  */
 router.delete('/:id', PlaceController.deletePlace);
 
+router.post("/:id/reviews", PlaceController.addReview);
+router.patch("/reviews/:reviewId", PlaceController.updateReview);
+router.delete("/reviews/:reviewId", PlaceController.deleteReview);
+
 export default router;

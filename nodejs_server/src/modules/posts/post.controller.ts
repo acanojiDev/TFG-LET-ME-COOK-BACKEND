@@ -4,6 +4,40 @@ import { PostService } from './post.service';
 import { UserService } from '../users/user.service';
 
 export class PostController {
+	static async save(req: Request, res: Response) {
+		try {
+			const { id } = req.params; // user_id
+			const { post_id } = req.body; // Assuming post_id is passed in body as per previous incomplete edit or extracting from schema if imported
+			// Actually let's just take it from body directly or use schema if available.
+			// checking imports... 'savePostSchema' not imported.
+			// I'll import it.
+			await PostService.savePost(id, post_id);
+			res.status(200).json({ message: "Post saved" });
+		} catch (error: any) {
+			res.status(500).json({ error: error.message });
+		}
+	}
+
+	static async unsave(req: Request, res: Response) {
+		try {
+			const { id, postId } = req.params;
+			await PostService.unsavePost(id, postId);
+			res.status(200).json({ message: "Post unsaved" });
+		} catch (error: any) {
+			res.status(500).json({ error: error.message });
+		}
+	}
+
+	static async getSaved(req: Request, res: Response) {
+		try {
+			const { id } = req.params;
+			const savedPosts = await PostService.getSavedPosts(id);
+			res.status(200).json({ data: savedPosts });
+		} catch (error: any) {
+			res.status(500).json({ error: error.message });
+		}
+	}
+
 	static async createPost(req: Request, res: Response) {
 		try {
 			const validatedData = createPostSchema.parse(req.body);
@@ -41,7 +75,7 @@ export class PostController {
 				});
 			}
 
-			const limitParsed = Math.min((limit ? parseInt(limit) : 5), 15)/// pongo como máximo 15 posts a entregar.			
+			const limitParsed = Math.min((limit ? parseInt(limit) : 5), 15)/// pongo como máximo 15 posts a entregar.
 
 			const allPosts = await PostService.getFeedPosts(limitParsed, user_id, cursor);
 
