@@ -166,5 +166,35 @@ export class PostController {
 			res.status(500).json({ error: error.message });
 		}
 	}
+
+	static async getUserPosts(req: Request, res: Response) {
+		try {
+			const { target_user_id } = req.params;
+			const { user_id } = req.query;
+
+			if (!user_id) {
+				return res.status(400).json({ error: 'El parámetro user_id es requerido' });
+			}
+
+			const targetUser = await UserService.getUserById(target_user_id);
+			if (!targetUser) {
+				return res.status(404).json({ error: 'El usuario del perfil no existe' });
+			}
+
+			const rawPosts = await PostService.getUserPosts(target_user_id);
+
+			const posts = await Promise.all(rawPosts.map(async (post: any) => {
+				const is_liked = await LikesController.userHasLikedPost(user_id as string, post.id);
+				return {
+					...post,
+					is_liked
+				};
+			}));
+
+			res.status(200).json({ data: posts });
+		} catch (error: any) {
+			res.status(500).json({ error: error.message });
+		}
+	}
 }
 

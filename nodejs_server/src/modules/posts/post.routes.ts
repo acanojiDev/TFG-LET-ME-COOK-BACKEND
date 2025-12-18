@@ -61,6 +61,7 @@ router.post("/", PostController.createPost);
  * TODO SWAGGER
 **/
 router.get('/', PostController.getPosts);
+router.get('/user/:target_user_id', PostController.getUserPosts);
 
 /**
  * @swagger

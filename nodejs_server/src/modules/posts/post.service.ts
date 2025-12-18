@@ -129,5 +129,13 @@ export class PostService {
 			where: { id },
 		});
 	}
+
+	static async getUserPosts(targetUserId: string) {
+		return prisma.posts.findMany({
+			where: { user_id: targetUserId },
+			orderBy: { created_at: 'desc' },
+			include: postInclude
+		});
+	}
 }
 
