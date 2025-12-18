@@ -9,15 +9,15 @@ export class LikesController {
   static async createLike(req: Request, res: Response) {
     try {
       const validatedData = createLikeSchema.parse(req.body);
-      
+
       const likeExistente = await LikeService.getLike(validatedData.user_id, validatedData.post_id)
 
-      if(likeExistente){
+      if (likeExistente) {
         return res.status(200).json({ message: "El like ya existia." });
       }
-      
+
       const like = await LikeService.createLike(validatedData);
-      
+
 
       res.status(201).json({
         message: "Añadido like para la publicación: " + like.post_id,
@@ -79,7 +79,7 @@ export class LikesController {
 
       const likeExistente = await LikeService.getLike(userId, postId)
 
-      if(!likeExistente){
+      if (!likeExistente) {
         return res.status(200).json({ message: "El like ya no existia." });
       }
 
@@ -89,5 +89,10 @@ export class LikesController {
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
+  }
+
+  static async userHasLikedPost(userId: string, postId: string): Promise<boolean> {
+    const like = await LikeService.getLike(userId, postId);
+    return !!like;
   }
 }
