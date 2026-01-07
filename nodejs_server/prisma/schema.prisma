@@ -1,16 +1,10 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 datasource db {
   provider = "postgresql"
   schemas  = ["public"]
 }
 
 generator client {
-  provider        = "prisma-client-js"
+  provider = "prisma-client-js"
 }
 
 model comments {
@@ -21,10 +15,6 @@ model comments {
   created_at DateTime? @default(now()) @db.Timestamptz(6)
   posts      posts     @relation(fields: [post_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   users      users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  /**
-   * mentions      mentions[]
-   * notifications notifications[]
-   */
 
   @@schema("public")
 }
@@ -80,7 +70,6 @@ model likes {
   @@schema("public")
 }
 
-/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model place_reviews {
   id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   user_id    String    @db.Uuid
@@ -88,21 +77,21 @@ model place_reviews {
   rating     Decimal?  @db.Decimal
   comment    String?
   created_at DateTime? @default(now()) @db.Timestamptz(6)
+  photo_url  String
   places     places    @relation(fields: [place_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   users      users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@schema("public")
 }
 
-/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model places {
-  id            String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  id            String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   name          String
+  media_url     String
   address       String
   description   String?
   tags          String[]
-  geolocation   Unsupported("point")?
-  rating        Decimal?              @db.Decimal
+  rating        Decimal?        @db.Decimal
   open          Boolean?
   type          String?
   place_reviews place_reviews[]
@@ -110,7 +99,6 @@ model places {
   @@schema("public")
 }
 
-/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model post_media {
   id         String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   post_id    String  @db.Uuid
@@ -122,27 +110,21 @@ model post_media {
   @@schema("public")
 }
 
-/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model posts {
-  id                 String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  user_id            String               @db.Uuid
-  type               String
-  content            String?
-  media_url          String?
-  created_at         DateTime?            @default(now()) @db.Timestamptz(6)
-  updated_at         DateTime?            @default(now()) @db.Timestamptz(6)
-  comments           comments[]
-  likes              likes[]
-  /**
-   * ai_analysis      ai_analysis[]
-   * mentions         mentions[]
-   * notifications    notifications[]
-   */
-  post_media         post_media[]
-  users              users                @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  recipes            recipes?
-  user_saved_posts   user_saved_posts[]
-  user_viewed_posts  user_viewed_posts[]
+  id                String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id           String              @db.Uuid
+  type              String
+  content           String?
+  media_url         String?
+  created_at        DateTime?           @default(now()) @db.Timestamptz(6)
+  updated_at        DateTime?           @default(now()) @db.Timestamptz(6)
+  comments          comments[]
+  likes             likes[]
+  post_media        post_media[]
+  users             users               @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  recipes           recipes?
+  user_saved_posts  user_saved_posts[]
+  user_viewed_posts user_viewed_posts[]
 
   @@schema("public")
 }
@@ -166,10 +148,6 @@ model recipes {
   difficulty         String?
   time_required      Int?
   recipe_ingredients recipe_ingredients[]
-  /**
-   * allergies_ingredients allergies_ingredients[]
-   * recipe_tag_map        recipe_tag_map[]
-   */
   posts              posts                @relation(fields: [id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@schema("public")
@@ -209,31 +187,123 @@ model user_settings {
   @@schema("public")
 }
 
+// ====== USUARIOS ======
 model users {
-  id                                 String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  username                           String               @unique
-  photo_url                          String?
-  bio                                String?
-  location                           String?
-  birth_date                         DateTime             @db.Date
-  registered_at                      DateTime?            @default(now()) @db.Timestamptz(6)
-  updated_at                         DateTime?            @default(now()) @db.Timestamptz(6)
-  comments                           comments[]
-  follows_follows_followed_idTousers follows[]            @relation("follows_followed_idTousers")
-  follows_follows_follower_idTousers follows[]            @relation("follows_follower_idTousers")
-  group_users                        group_users[]
-  likes                              likes[]
-  place_reviews                      place_reviews[]
-  posts                              posts[]
-  user_saved_posts                   user_saved_posts[]
-  user_viewed_posts                  user_viewed_posts[]
-  user_settings                      user_settings?
-  /**
-   * ai_recipe_requests                          ai_recipe_requests[]
-   * mentions                                    mentions[]
-   * notifications_notifications_actor_idTousers notifications[]      @relation("notifications_actor_idTousers")
-   * notifications_notifications_user_idTousers  notifications[]      @relation("notifications_user_idTousers")
-   */
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  username      String    @unique
+  photo_url     String?
+  bio           String?
+  location      String?
+  birth_date    DateTime  @db.Date
+  registered_at DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at    DateTime? @default(now()) @db.Timestamptz(6)
 
+  // Relaciones - Existentes
+  comments          comments[]
+  follows_followers follows[]           @relation("follows_followed_idTousers")
+  follows_following follows[]           @relation("follows_follower_idTousers")
+  group_users       group_users[]
+  likes             likes[]
+  place_reviews     place_reviews[]
+  posts             posts[]
+  user_saved_posts  user_saved_posts[]
+  user_viewed_posts user_viewed_posts[]
+  user_settings     user_settings?
+
+  // Relaciones - Chat 1-to-1
+  user_contacts            contacts[]        @relation("user_contacts")
+  contact_user_contacts    contacts[]        @relation("contact_user_contacts")
+  direct_messages_sent     direct_messages[] @relation("sender")
+  direct_messages_received direct_messages[] @relation("receiver")
+
+  // Relaciones - Chat Grupal
+  user_group_members  group_members[]  @relation("user_group_members")
+  user_group_messages group_messages[] @relation("user_group_messages")
+
+  @@schema("public")
+}
+
+// ====== CHAT 1-to-1 ======
+
+// Contactos (1-to-1)
+model contacts {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id         String    @db.Uuid
+  contact_user_id String    @db.Uuid
+  created_at      DateTime? @default(now()) @db.Timestamptz(6)
+
+  user         users @relation("user_contacts", fields: [user_id], references: [id], onDelete: Cascade)
+  contact_user users @relation("contact_user_contacts", fields: [contact_user_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, contact_user_id])
+  @@index([user_id])
+  @@index([contact_user_id])
+  @@schema("public")
+}
+
+// Mensajes directos (1-to-1)
+model direct_messages {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sender_id   String    @db.Uuid
+  receiver_id String    @db.Uuid
+  content     String
+  created_at  DateTime? @default(now()) @db.Timestamptz(6)
+  read_at     DateTime?
+
+  sender   users @relation("sender", fields: [sender_id], references: [id], onDelete: Cascade)
+  receiver users @relation("receiver", fields: [receiver_id], references: [id], onDelete: Cascade)
+
+  @@index([sender_id])
+  @@index([receiver_id])
+  @@schema("public")
+}
+
+// ====== CHAT GRUPAL ======
+
+// Grupos de chat
+model chat_groups {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name        String
+  description String?
+  avatar_url  String?
+  created_at  DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime? @default(now()) @db.Timestamptz(6)
+
+  group_members  group_members[]
+  group_messages group_messages[]
+
+  @@schema("public")
+}
+
+// Miembros del grupo
+model group_members {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  group_id  String    @db.Uuid
+  user_id   String    @db.Uuid
+  role      String    @default("member")
+  joined_at DateTime? @default(now()) @db.Timestamptz(6)
+
+  chat_group chat_groups @relation(fields: [group_id], references: [id], onDelete: Cascade)
+  user       users       @relation("user_group_members", fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([group_id, user_id])
+  @@index([group_id])
+  @@index([user_id])
+  @@schema("public")
+}
+
+// Mensajes del grupo
+model group_messages {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  group_id   String    @db.Uuid
+  sender_id  String    @db.Uuid
+  content    String
+  created_at DateTime? @default(now()) @db.Timestamptz(6)
+
+  chat_group chat_groups @relation(fields: [group_id], references: [id], onDelete: Cascade)
+  sender     users       @relation("user_group_messages", fields: [sender_id], references: [id], onDelete: Cascade)
+
+  @@index([group_id])
+  @@index([sender_id])
   @@schema("public")
 }

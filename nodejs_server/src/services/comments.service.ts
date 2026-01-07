@@ -1,5 +1,5 @@
-import { prisma } from "../../config/database";
-import { CreateCommentInput, UpdateCommentInput } from "./comments.schema";
+import { prisma } from "../config/database";
+import { CreateCommentInput, UpdateCommentInput } from "../modules/comments/comments.schema";
 
 export class CommentService {
 	static async createComment(data: CreateCommentInput) {

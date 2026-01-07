@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from "express";
-import { CommentService } from "./comments.service";
+import { CommentService } from "../../services/comments.service";
 import { createCommentSchema, updateCommentSchema } from "./comments.schema";
 
 export class CommentController {

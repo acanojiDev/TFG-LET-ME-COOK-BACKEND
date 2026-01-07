@@ -1,5 +1,5 @@
-import { prisma } from "../../config/database";
-import { CreateUserInput,UpdateSettingsInput, UpdateUserInput } from "./user.schema";
+import { prisma } from "../config/database";
+import { CreateUserInput,UpdateSettingsInput, UpdateUserInput } from "../modules/users/user.schema";
 
 export class UserService {
 	static async followUser(followerId: string, followedId: string) {
@@ -127,5 +127,40 @@ export class UserService {
 		return await prisma.users.delete({
 			where: { id },
 		});
+	}
+
+	/**
+	 * Obtener el perfil completo de un usuario
+	 * Incluye: posts, número de posts, seguidores, seguidos
+	 */
+	static async getUserProfile(userId: string) {
+		const user = await prisma.users.findUnique({
+			where: { id: userId },
+			select: {
+				id: true,
+				username: true,
+				photo_url: true,
+				bio: true,
+				location: true,
+				_count: {
+					select: {
+						posts: true,
+						follows_follows_followed_idTousers: true, // Seguidores (quienes me siguen)
+						follows_follows_follower_idTousers: true,  // Siguiendo (a quienes sigo)
+					}
+				}
+			}
+		});
+
+		if (!user) {
+			return null;
+		}
+
+		return {
+			...user,
+			postsCount: user._count.posts,
+			followersCount: user._count.follows_follows_followed_idTousers,
+			followingCount: user._count.follows_follows_follower_idTousers,
+		};
 	}
 }

@@ -1,5 +1,5 @@
-import { prisma } from '../../config/database';
-import { CreatePostInput, UpdatePostInput } from './post.schema';
+import { prisma } from '../config/database';
+import { CreatePostInput, UpdatePostInput } from '../modules/posts/post.schema';
 
 const postInclude = {
 	users: {
@@ -9,11 +9,18 @@ const postInclude = {
 			photo_url: true,
 		},
 	},
-	/// Solo devuelve el numero de likes y comentarios.
+	recipes: {
+		select: {
+			description: true,
+			time_required: true,
+		}
+	},
+	/// Solo devuelve el numero de likes, comentarios y favoritos.
 	_count: {
 		select: {
 			comments: true,
 			likes: true,
+			user_saved_posts: true,
 		}
 	}
 };
@@ -44,21 +51,7 @@ export class PostService {
 			where: { user_id: userId },
 			include: {
 				posts: {
-					include: {
-						users: {
-							select: {
-								id: true,
-								username: true,
-								photo_url: true,
-							},
-						},
-						_count: {
-							select: {
-								comments: true,
-								likes: true,
-							},
-						},
-					},
+					include: postInclude
 				},
 			},
 		});
@@ -113,7 +106,8 @@ export class PostService {
 
 	static async getPostById(id: string) {
 		return prisma.posts.findUnique({
-			where: { id }
+			where: { id },
+			include: postInclude
 		});
 	}
 
@@ -134,6 +128,67 @@ export class PostService {
 		return prisma.posts.findMany({
 			where: { user_id: targetUserId },
 			orderBy: { created_at: 'desc' },
+			include: postInclude
+		});
+	}
+
+	/**
+	 * Obtener posts aleatorios ordenados por fecha más reciente
+	 * Para la pantalla Explorar con infinite scroll
+	 * @param limit Número de posts a obtener (por defecto 12)
+	 * @param user_id ID del usuario para filtrar posts ya vistos
+	 * @param cursor Fecha del último post recibido para paginación
+	 */
+	static async getExplorePosts(limit: number = 12, user_id: string, cursor?: string) {
+		return prisma.posts.findMany({
+			take: limit + 1, // +1 para verificar si hay más
+			orderBy: { created_at: 'desc' }, // Ordenar por fecha más reciente primero
+			where: {
+				...(cursor && {
+					created_at: {
+						lt: new Date(cursor), // Posts anteriores al cursor
+					},
+				}),
+				// Excluir posts que el usuario ya ha visto (opcional, puedes quitarlo si quieres)
+				NOT: {
+					user_viewed_posts: {
+						some: {
+							user_id: user_id
+						}
+					}
+				}
+			},
+			include: postInclude
+		});
+	}
+
+	/**
+	 * Obtener posts para la pantalla Inicio
+	 * Similar a getFeedPosts pero con toda la información necesaria
+	 */
+	static async getHomePosts(limit: number, user_id: string, cursor?: string) {
+		return prisma.posts.findMany({
+			take: limit + 1,
+			orderBy: { created_at: 'desc' },
+			where: {
+				...(cursor && {
+					created_at: {
+						lt: new Date(cursor),
+					},
+				}),
+				// Excluir posts creados por el mismo usuario
+				user_id: {
+					not: user_id
+				},
+				// Excluir posts que el usuario ya ha visto
+				NOT: {
+					user_viewed_posts: {
+						some: {
+							user_id: user_id
+						}
+					}
+				}
+			},
 			include: postInclude
 		});
 	}

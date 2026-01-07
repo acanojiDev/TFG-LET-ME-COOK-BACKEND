@@ -1,5 +1,5 @@
-import {prisma} from '../../config/database';
-import { CreateLikeInput } from './likes.schema';
+import { prisma } from '../config/database';
+import { CreateLikeInput } from '../modules/likes/likes.schema';
 
 const likeInclude = {
 	user: {

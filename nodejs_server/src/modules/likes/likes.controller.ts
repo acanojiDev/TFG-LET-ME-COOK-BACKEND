@@ -1,8 +1,8 @@
 import { Request, Response } from "express";
 import { createLikeSchema } from "./likes.schema";
-import { LikeService } from "./likes.service";
-import { PostService } from "../posts/post.service";
-import { UserService } from "../users/user.service";
+import { LikeService } from "../../services/likes.service";
+import { PostService } from "../../services/post.service";
+import { UserService } from "../../services/user.service";
 
 export class LikesController {
   /// Crear like

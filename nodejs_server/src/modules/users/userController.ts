@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { UserService } from '../users/user.service';
+import { UserService } from '../../services/user.service';
 import { createUserSchema, updateUserSchema, followUserSchema, updateSettingsSchema } from './user.schema';
 
 export class UserController {

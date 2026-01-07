@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { createPostSchema, updatePostSchema } from './post.schema';
-import { PostService } from './post.service';
-import { UserService } from '../users/user.service';
+import { PostService } from '../../services/post.service';
+import { UserService } from '../../services/user.service';
 import { LikesController } from '../likes/likes.controller';
 
 export class PostController {
