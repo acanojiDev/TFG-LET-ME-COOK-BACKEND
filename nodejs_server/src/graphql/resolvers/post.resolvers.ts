@@ -7,6 +7,23 @@ import { PlaceService } from '../../services/place.service';
  * Resolvers para el tipo Post
  * Estos resolvers manejan campos calculados y relaciones del tipo Post
  */
+
+
+// Función auxiliar para mapear posts
+const mapPost = async (post: any, user_id: string) => {
+	const is_liked = await LikesController.userHasLikedPost(user_id, post.id);
+	return {
+		...post,
+		is_liked,
+		likesCount: post._count?.likes || 0,
+		commentsCount: post._count?.comments || 0,
+		// Asegurar que estos campos siempre están presentes
+		media_url: post.media_url || null,
+		description: post.recipes?.description || post.content || null,
+		time_required: post.recipes?.time_required || null,
+	};
+};
+
 const Post = {
 	// Resolver para la relación user
 	user: (parent: any) => {
@@ -81,7 +98,7 @@ const Post = {
 	is_liked: async (parent: any, args: any, context: any) => {
 		// El user_id puede venir del contexto (usuario autenticado) o de los args
 		const user_id = context?.user_id || args?.user_id;
-		
+
 		if (!user_id) {
 			return false;
 		}
@@ -96,8 +113,8 @@ const Post = {
 	// Convertir Date a String para created_at
 	created_at: (parent: any) => {
 		if (parent.created_at) {
-			return parent.created_at instanceof Date 
-				? parent.created_at.toISOString() 
+			return parent.created_at instanceof Date
+				? parent.created_at.toISOString()
 				: parent.created_at;
 		}
 		return null;
@@ -106,8 +123,8 @@ const Post = {
 	// Convertir Date a String para updated_at
 	updated_at: (parent: any) => {
 		if (parent.updated_at) {
-			return parent.updated_at instanceof Date 
-				? parent.updated_at.toISOString() 
+			return parent.updated_at instanceof Date
+				? parent.updated_at.toISOString()
 				: parent.updated_at;
 		}
 		return null;
@@ -153,6 +170,8 @@ const Query = {
 				return {
 					...post,
 					is_liked,
+					likesCount: post._count?.likes || 0,       // ✅ Mapear _count.likes a likesCount
+					commentsCount: post._count?.comments || 0   // ✅ Mapear _count.comments a commentsCount
 				};
 			})
 		);
@@ -189,6 +208,8 @@ const Query = {
 		return {
 			...post,
 			is_liked,
+			likesCount: post._count?.likes || 0,       // ✅ Mapear _count.likes a likesCount
+			commentsCount: post._count?.comments || 0   // ✅ Mapear _count.comments a commentsCount
 		};
 	},
 
@@ -219,6 +240,8 @@ const Query = {
 				return {
 					...post,
 					is_liked,
+					likesCount: post._count?.likes || 0,       // ✅ Mapear _count.likes a likesCount
+					commentsCount: post._count?.comments || 0   // ✅ Mapear _count.comments a commentsCount
 				};
 			})
 		);
@@ -247,6 +270,8 @@ const Query = {
 				return {
 					...post,
 					is_liked,
+					likesCount: post._count?.likes || 0,       // ✅ Mapear _count.likes a likesCount
+					commentsCount: post._count?.comments || 0   // ✅ Mapear _count.comments a commentsCount
 				};
 			})
 		);
@@ -287,6 +312,8 @@ const Query = {
 				return {
 					...post,
 					is_liked,
+					likesCount: post._count?.likes || 0,       // ✅ Mapear _count.likes a likesCount
+					commentsCount: post._count?.comments || 0   // ✅ Mapear _count.comments a commentsCount
 				};
 			})
 		);
@@ -350,6 +377,12 @@ const Query = {
 				return {
 					...post,
 					is_liked,
+					likesCount: post._count?.likes || 0,
+					commentsCount: post._count?.comments || 0,
+					// Asegurar que estos campos siempre están presentes
+					media_url: post.media_url || null,
+					description: post.recipes?.description || post.content || null,
+					time_required: post.recipes?.time_required || null,
 				};
 			})
 		);
@@ -391,6 +424,8 @@ const Query = {
 				return {
 					...post,
 					is_liked,
+					likesCount: post._count?.likes || 0,       // ✅ Mapear _count.likes a likesCount
+					commentsCount: post._count?.comments || 0   // ✅ Mapear _count.comments a commentsCount
 				};
 			})
 		);
@@ -424,7 +459,7 @@ const Mutation = {
 
 		// Obtener el post completo con relaciones para devolverlo
 		const fullPost = await PostService.getPostById(post.id);
-		
+
 		return fullPost || post;
 	},
 

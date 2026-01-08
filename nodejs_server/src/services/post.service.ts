@@ -78,29 +78,32 @@ export class PostService {
 	 */
 
 	static async getFeedPosts(limit: number, user_id: string, cursor?: string) {
-		return prisma.posts.findMany({
-			take: limit + 1,
-			orderBy: { created_at: 'desc' },
-			where: {
-				...(cursor && {
-					created_at: {
-						lt: new Date(cursor), // menor que el cursor
-					},
-				}),
-				// Excluir posts creados por el mismo usuario
-				user_id: {
-					not: user_id
-				},
-				// Excluir posts que el usuario ya ha visto
-				NOT: {
-					user_viewed_posts: {
-						some: {
-							user_id: user_id
-						}
-					}
+		let whereClause: any = {
+			user_id: { not: user_id },
+			NOT: {
+				user_viewed_posts: {
+					some: { user_id: user_id }
 				}
-			},
-			include: postInclude
+			}
+		};
+
+		// Solo añadir el filtro de cursor si existe y es válido
+		if (cursor) {
+			const cursorDate = new Date(cursor);
+			if (!isNaN(cursorDate.getTime())) { // Validar que sea una fecha válida
+				whereClause.created_at = { lt: cursorDate };
+			}
+		}
+
+		return prisma.posts.findMany({
+			take: limit,
+			orderBy: { created_at: "desc" },
+			where: whereClause,
+			include: {
+				users: { select: { id: true, username: true, photo_url: true } },
+				recipes: { select: { description: true, time_required: true } },
+				_count: { select: { comments: true, likes: true, user_saved_posts: true } }
+			}
 		});
 	}
 
@@ -140,16 +143,32 @@ export class PostService {
 	 * @param cursor Fecha del último post recibido para paginación
 	 */
 	static async getExplorePosts(limit: number = 12, user_id: string, cursor?: string) {
+		console.log('[getExplorePosts] cursor received:', cursor);
+
+		// Validar cursor ANTES de usarlo
+		let cursorDate: Date | undefined;
+		if (cursor) {
+			cursorDate = new Date(cursor);
+			// Validar que sea una fecha válida
+			if (isNaN(cursorDate.getTime())) {
+				console.warn('[getExplorePosts] Invalid cursor, ignoring:', cursor);
+				cursorDate = undefined;
+			} else {
+				console.log('[getExplorePosts] Valid cursor:', cursorDate.toISOString());
+			}
+		}
+
 		return prisma.posts.findMany({
 			take: limit + 1, // +1 para verificar si hay más
 			orderBy: { created_at: 'desc' }, // Ordenar por fecha más reciente primero
 			where: {
-				...(cursor && {
+				// Solo agregar created_at si tenemos un cursor válido
+				...(cursorDate && {
 					created_at: {
-						lt: new Date(cursor), // Posts anteriores al cursor
+						lt: cursorDate, // Posts anteriores al cursor
 					},
 				}),
-				// Excluir posts que el usuario ya ha visto (opcional, puedes quitarlo si quieres)
+				// Excluir posts que el usuario ya ha visto
 				NOT: {
 					user_viewed_posts: {
 						some: {
