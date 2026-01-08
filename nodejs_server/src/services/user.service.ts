@@ -145,8 +145,8 @@ export class UserService {
 				_count: {
 					select: {
 						posts: true,
-						follows_follows_followed_idTousers: true, // Seguidores (quienes me siguen)
-						follows_follows_follower_idTousers: true,  // Siguiendo (a quienes sigo)
+						follows_followers: true, // Seguidores (quienes me siguen)
+						follows_following: true,  // Siguiendo (a quienes sigo)
 					}
 				}
 			}
@@ -159,8 +159,8 @@ export class UserService {
 		return {
 			...user,
 			postsCount: user._count.posts,
-			followersCount: user._count.follows_follows_followed_idTousers,
-			followingCount: user._count.follows_follows_follower_idTousers,
+			followersCount: user._count.follows_followers,
+			followingCount: user._count.follows_following,
 		};
 	}
 }

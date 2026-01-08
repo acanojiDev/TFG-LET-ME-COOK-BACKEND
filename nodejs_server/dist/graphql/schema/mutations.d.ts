@@ -1,0 +1,2 @@
+export declare const mutationDefs = "\n\textend type Mutation {\n\t\t# Crear un nuevo post\n\t\tcreatePost(input: CreatePostInput!): Post!\n\n\t\t# Actualizar un post existente\n\t\tupdatePost(id: ID!, input: UpdatePostInput!): Post!\n\n\t\t# Eliminar un post\n\t\tdeletePost(id: ID!): Boolean!\n\n\t\t# Guardar un post (agregar a favoritos)\n\t\tsavePost(user_id: ID!, post_id: ID!): Boolean!\n\n\t\t# Quitar un post de favoritos\n\t\tunsavePost(user_id: ID!, post_id: ID!): Boolean!\n\t}\n";
+//# sourceMappingURL=mutations.d.ts.map

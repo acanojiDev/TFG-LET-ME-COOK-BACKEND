@@ -82,9 +82,9 @@ export class UserController {
             if (!user) {
                 return res.status(404).json({ error: 'Usuario no encontrado' });
             }
-            res.status(200).json({ data: user });
+            return res.status(200).json({ data: user });
         } catch (error: any) {
-            res.status(500).json({ error: error.message });
+            return res.status(500).json({ error: error.message });
         }
     }
 

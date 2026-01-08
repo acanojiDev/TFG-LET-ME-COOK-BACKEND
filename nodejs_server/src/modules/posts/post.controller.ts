@@ -104,13 +104,13 @@ export class PostController {
 			/// Se coge el último id de post, o ninguno
 			const nextCursor = posts.length > 0 ? posts[posts.length - 1].created_at : null
 
-			res.status(200).json({
+			return res.status(200).json({
 				data: posts,
 				next_cursor: nextCursor,
 				has_more: hasMore
 			});
 		} catch (error: any) {
-			res.status(500).json({ error: error.message });
+			return res.status(500).json({ error: error.message });
 		}
 	}
 
@@ -130,14 +130,14 @@ export class PostController {
 				is_liked = await LikesController.userHasLikedPost(user_id, id);
 			}
 
-			res.status(200).json({
+			return res.status(200).json({
 				data: {
 					...post,
 					is_liked
 				}
 			});
 		} catch (error: any) {
-			res.status(500).json({ error: error.message });
+			return res.status(500).json({ error: error.message });
 		}
 	}
 
@@ -191,9 +191,9 @@ export class PostController {
 				};
 			}));
 
-			res.status(200).json({ data: posts });
+			return res.status(200).json({ data: posts });
 		} catch (error: any) {
-			res.status(500).json({ error: error.message });
+			return res.status(500).json({ error: error.message });
 		}
 	}
 }

@@ -10,7 +10,7 @@ export class LikesController {
     try {
       const validatedData = createLikeSchema.parse(req.body);
 
-      const likeExistente = await LikeService.getLike(validatedData.user_id, validatedData.post_id)
+      const likeExistente = await LikeService.getLike(validatedData.user_id, validatedData.post_id);
 
       if (likeExistente) {
         return res.status(200).json({ message: "El like ya existia." });
@@ -19,12 +19,12 @@ export class LikesController {
       const like = await LikeService.createLike(validatedData);
 
 
-      res.status(201).json({
+      return res.status(201).json({
         message: "Añadido like para la publicación: " + like.post_id,
         data: like,
       });
     } catch (error: any) {
-      res.status(400).json({ error: error.message });
+      return res.status(400).json({ error: error.message });
     }
   }
 
@@ -43,9 +43,9 @@ export class LikesController {
       }
 
       const likes = await LikeService.getAllLikesOfAPost(postId);
-      res.status(200).json({ data: likes });
+      return res.status(200).json({ data: likes });
     } catch (error: any) {
-      res.status(500).json({ error: error.message });
+      return res.status(500).json({ error: error.message });
     }
   }
 
@@ -63,9 +63,9 @@ export class LikesController {
       }
 
       const likes = await LikeService.getAllLikesOfAUser(userId);
-      res.status(200).json({ data: likes });
+      return res.status(200).json({ data: likes });
     } catch (error: any) {
-      res.status(500).json({ error: error.message });
+      return res.status(500).json({ error: error.message });
     }
   }
 
@@ -85,9 +85,9 @@ export class LikesController {
 
       await LikeService.deleteLike(userId, postId);
 
-      res.status(200).json({ message: "Like eliminado exitosamente" });
+      return res.status(200).json({ message: "Like eliminado exitosamente" });
     } catch (error: any) {
-      res.status(500).json({ error: error.message });
+      return res.status(500).json({ error: error.message });
     }
   }
 
