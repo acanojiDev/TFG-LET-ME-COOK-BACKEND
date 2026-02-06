@@ -7,95 +7,193 @@ generator client {
   provider = "prisma-client-js"
 }
 
-model comments {
-  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  user_id    String    @db.Uuid
-  post_id    String    @db.Uuid
-  text       String
-  created_at DateTime? @default(now()) @db.Timestamptz(6)
-  posts      posts     @relation(fields: [post_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  users      users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+// ====== ENUMERACIONES ======
+
+enum UserType {
+  PERSON
+  RESTAURANT
+  BAR
 
   @@schema("public")
 }
+
+enum PostType {
+  PHOTO
+  VIDEO
+  TEXT
+  RECIPE
+
+  @@schema("public")
+}
+
+enum StoryType {
+  PHOTO
+  VIDEO
+
+  @@schema("public")
+}
+
+enum PostCategory {
+  TRENDING
+  ITALIAN
+  MEXICAN
+  JAPANESE
+  CHINESE
+  DESSERTS
+  VEGAN
+  QUICK_EASY
+  BURGER
+  SEAFOOD
+  COCKTAILS
+  BREAKFAST
+  LUNCH
+  DINNER
+  SNACKS
+  HEALTHY
+  COMFORT_FOOD
+  STREET_FOOD
+
+  @@schema("public")
+}
+
+enum PlaceFilter {
+  // Restaurantes
+  BURGER
+  SEAFOOD
+  ITALIAN
+  MEXICAN
+  CHINESE
+  JAPANESE
+
+  // Bares
+  COCKTAIL
+  WINE
+  HAPPY_HOUR
+  NIGHTLIFE
+
+  @@schema("public")
+}
+
+enum DifficultyLevel {
+  EASY
+  MEDIUM
+  HARD
+
+  @@schema("public")
+}
+
+// ====== USUARIOS Y EMPRESAS ======
+
+model users {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_type     UserType  @default(PERSON)
+  created_at    DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at    DateTime  @default(now()) @db.Timestamptz(6)
+
+  // Relación polimórfica: persona o empresa
+  person_profile   person_profiles?
+  business_profile business_profiles?
+
+  // Relaciones
+  posts                    posts[]
+  stories                  stories[]
+  comments                 comments[]
+  likes                    likes[]
+  saved_posts              saved_posts[]
+  viewed_posts             viewed_posts[]
+  viewed_stories           viewed_stories[]
+  follows_followers        follows[]           @relation("followed_user")
+  follows_following        follows[]           @relation("follower_user")
+  place_reviews            place_reviews[]
+  user_settings            user_settings?
+  user_allergies           user_allergies[]
+  user_preferences         user_preferences[]
+
+  // Chat
+  contacts_as_user         contacts[]          @relation("user_contacts")
+  contacts_as_contact      contacts[]          @relation("contact_user_contacts")
+  direct_messages_sent     direct_messages[]   @relation("sender")
+  direct_messages_received direct_messages[]   @relation("receiver")
+
+  @@index([user_type])
+  @@schema("public")
+}
+
+model person_profiles {
+  user_id       String    @id @db.Uuid
+  username      String    @unique
+  full_name     String?
+  photo_url     String?
+  bio           String?
+  location      String?   // Para recomendaciones cercanas
+  birth_date    DateTime  @db.Date
+
+  user users @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([username])
+  @@index([location])
+  @@schema("public")
+}
+
+model business_profiles {
+  user_id      String    @id @db.Uuid
+  business_name String
+  photo_url     String?
+  bio           String?
+  location      String
+  specialty     String?
+  phone         String?
+  website       String?
+
+  user users @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([business_name])
+  @@index([location])
+  @@schema("public")
+}
+
+// ====== SEGUIMIENTOS ======
 
 model follows {
-  follower_id                      String    @db.Uuid
-  followed_id                      String    @db.Uuid
-  followed_at                      DateTime? @default(now()) @db.Timestamptz(6)
-  users_follows_followed_idTousers users     @relation("follows_followed_idTousers", fields: [followed_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  users_follows_follower_idTousers users     @relation("follows_follower_idTousers", fields: [follower_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  follower_id String    @db.Uuid
+  followed_id String    @db.Uuid
+  followed_at DateTime  @default(now()) @db.Timestamptz(6)
+
+  follower users @relation("follower_user", fields: [follower_id], references: [id], onDelete: Cascade)
+  followed users @relation("followed_user", fields: [followed_id], references: [id], onDelete: Cascade)
 
   @@id([follower_id, followed_id])
+  @@index([follower_id])
+  @@index([followed_id])
+  @@index([followed_at])
   @@schema("public")
 }
 
-model group_users {
-  group_id  String    @db.Uuid
-  user_id   String    @db.Uuid
-  joined_at DateTime? @default(now()) @db.Timestamptz(6)
-  groups    groups    @relation(fields: [group_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  users     users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+// ====== POSTS ======
 
-  @@id([group_id, user_id])
-  @@schema("public")
-}
-
-model groups {
-  id          String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name        String        @unique
+model posts {
+  id          String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id     String       @db.Uuid
+  post_type   PostType
+  title       String?
   description String?
-  created_at  DateTime?     @default(now()) @db.Timestamptz(6)
-  group_users group_users[]
+  categories  PostCategory[] // Array de categorías para filtros
+  created_at  DateTime     @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime     @default(now()) @db.Timestamptz(6)
 
-  @@schema("public")
-}
+  // Relaciones
+  user          users          @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  post_media    post_media[]
+  recipe        recipes?
+  comments      comments[]
+  likes         likes[]
+  saved_posts   saved_posts[]
+  viewed_posts  viewed_posts[]
 
-model ingredients {
-  id                 String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name               String               @unique
-  unit               String
-  recipe_ingredients recipe_ingredients[]
-
-  @@schema("public")
-}
-
-model likes {
-  user_id String @db.Uuid
-  post_id String @db.Uuid
-  posts   posts  @relation(fields: [post_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  users   users  @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-
-  @@id([user_id, post_id])
-  @@schema("public")
-}
-
-model place_reviews {
-  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  user_id    String    @db.Uuid
-  place_id   String    @db.Uuid
-  rating     Decimal?  @db.Decimal
-  comment    String?
-  created_at DateTime? @default(now()) @db.Timestamptz(6)
-  photo_url  String
-  places     places    @relation(fields: [place_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  users      users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-
-  @@schema("public")
-}
-
-model places {
-  id            String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name          String
-  media_url     String
-  address       String
-  description   String?
-  tags          String[]
-  rating        Decimal?        @db.Decimal
-  open          Boolean?
-  type          String?
-  place_reviews place_reviews[]
-
+  @@index([user_id])
+  @@index([post_type])
+  @@index([created_at(sort: Desc)]) // Para ordenar por recientes
+  @@index([categories])
   @@schema("public")
 }
 
@@ -103,134 +201,274 @@ model post_media {
   id         String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   post_id    String  @db.Uuid
   media_url  String
-  media_type String?
-  position   Int?    @default(0)
-  posts      posts   @relation(fields: [post_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  media_type String  // "image" o "video"
+  position   Int     @default(0)
 
+  post posts @relation(fields: [post_id], references: [id], onDelete: Cascade)
+
+  @@index([post_id])
   @@schema("public")
 }
 
-model posts {
-  id                String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  user_id           String              @db.Uuid
-  type              String
-  content           String?
-  media_url         String?
-  created_at        DateTime?           @default(now()) @db.Timestamptz(6)
-  updated_at        DateTime?           @default(now()) @db.Timestamptz(6)
-  comments          comments[]
-  likes             likes[]
-  post_media        post_media[]
-  users             users               @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  recipes           recipes?
-  user_saved_posts  user_saved_posts[]
-  user_viewed_posts user_viewed_posts[]
+// ====== RECETAS ======
 
+model recipes {
+  id                 String          @id @db.Uuid
+  post_id            String          @unique @db.Uuid
+  name               String
+  description        String?
+  steps              String          // JSON con pasos detallados
+  difficulty         DifficultyLevel?
+  time_required      Int?            // En minutos
+  estimated_cost     Decimal?        @db.Decimal(10, 2) // Costo estimado (opcional)
+  servings           Int?            // Número de porciones
+
+  post               posts                @relation(fields: [post_id], references: [id], onDelete: Cascade)
+  recipe_ingredients recipe_ingredients[]
+
+  @@index([difficulty])
+  @@index([time_required])
+  @@schema("public")
+}
+
+model ingredients {
+  id                 String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name               String               @unique
+  unit               String               // gramos, ml, unidades, etc.
+
+  recipe_ingredients recipe_ingredients[]
+  allergen_ingredients allergen_ingredients[]
+
+  @@index([name])
   @@schema("public")
 }
 
 model recipe_ingredients {
   recipe_id     String      @db.Uuid
   ingredient_id String      @db.Uuid
-  quantity      Decimal     @db.Decimal
-  ingredients   ingredients @relation(fields: [ingredient_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  recipes       recipes     @relation(fields: [recipe_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  quantity      Decimal     @db.Decimal(10, 2)
+  notes         String?
+
+  recipe      recipes     @relation(fields: [recipe_id], references: [id], onDelete: Cascade)
+  ingredient  ingredients @relation(fields: [ingredient_id], references: [id], onDelete: Cascade)
 
   @@id([recipe_id, ingredient_id])
+  @@index([recipe_id])
   @@schema("public")
 }
 
-model recipes {
-  id                 String               @id @db.Uuid
-  name               String
-  description        String?
-  steps              String?
-  difficulty         String?
-  time_required      Int?
-  recipe_ingredients recipe_ingredients[]
-  posts              posts                @relation(fields: [id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+// ====== HISTORIAS (STORIES) ======
 
+model stories {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id     String    @db.Uuid
+  story_type  StoryType
+  media_url   String
+  created_at  DateTime  @default(now()) @db.Timestamptz(6)
+  expires_at  DateTime  @db.Timestamptz(6) // 24 horas después de created_at
+
+  user           users            @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  viewed_stories viewed_stories[]
+
+  @@index([user_id])
+  @@index([expires_at])
+  @@index([created_at(sort: Desc)])
   @@schema("public")
 }
 
-model user_saved_posts {
-  user_id String @db.Uuid
-  post_id String @db.Uuid
-  posts   posts  @relation(fields: [post_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  users   users  @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+model viewed_stories {
+  user_id   String   @db.Uuid
+  story_id  String   @db.Uuid
+  viewed_at DateTime @default(now()) @db.Timestamptz(6)
+
+  user  users   @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  story stories @relation(fields: [story_id], references: [id], onDelete: Cascade)
+
+  @@id([user_id, story_id])
+  @@index([user_id])
+  @@index([story_id])
+  @@schema("public")
+}
+
+// ====== INTERACCIONES CON POSTS ======
+
+model likes {
+  user_id    String   @db.Uuid
+  post_id    String   @db.Uuid
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+
+  user users @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  post posts @relation(fields: [post_id], references: [id], onDelete: Cascade)
 
   @@id([user_id, post_id])
+  @@index([post_id]) // Para contar likes rápido
   @@schema("public")
 }
 
-model user_viewed_posts {
-  user_id   String    @db.Uuid
-  post_id   String    @db.Uuid
-  viewed_at DateTime? @default(now()) @db.Timestamptz(6)
-  posts     posts     @relation(fields: [post_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  users     users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+model comments {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id    String    @db.Uuid
+  post_id    String    @db.Uuid
+  text       String
+  created_at DateTime  @default(now()) @db.Timestamptz(6)
+
+  user users @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  post posts @relation(fields: [post_id], references: [id], onDelete: Cascade)
+
+  @@index([post_id])
+  @@index([created_at(sort: Desc)])
+  @@schema("public")
+}
+
+model saved_posts {
+  user_id   String   @db.Uuid
+  post_id   String   @db.Uuid
+  saved_at  DateTime @default(now()) @db.Timestamptz(6)
+
+  user users @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  post posts @relation(fields: [post_id], references: [id], onDelete: Cascade)
 
   @@id([user_id, post_id])
+  @@index([user_id])
   @@schema("public")
 }
+
+model viewed_posts {
+  user_id   String   @db.Uuid
+  post_id   String   @db.Uuid
+  viewed_at DateTime @default(now()) @db.Timestamptz(6)
+
+  user users @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  post posts @relation(fields: [post_id], references: [id], onDelete: Cascade)
+
+  @@id([user_id, post_id])
+  @@index([user_id])
+  @@index([post_id])
+  @@schema("public")
+}
+
+// ====== LUGARES (RESTAURANTES Y BARES) ======
+
+model places {
+  id          String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name        String
+  media_url   String?
+  address     String
+  location    String        // Para búsquedas por ubicación
+  description String?
+  place_type  UserType      // RESTAURANT o BAR
+  filters     PlaceFilter[] // Filtros aplicables
+  specialty   String?       // Especialidad del lugar
+  phone       String?
+  website     String?
+  is_open     Boolean       @default(true)
+
+  place_reviews place_reviews[]
+
+  @@index([place_type])
+  @@index([location])
+  @@index([filters])
+  @@schema("public")
+}
+
+model place_reviews {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id    String    @db.Uuid
+  place_id   String    @db.Uuid
+  rating     Decimal   @db.Decimal(2, 1) // 0.0 a 5.0
+  comment    String?
+  photo_url  String?
+  created_at DateTime  @default(now()) @db.Timestamptz(6)
+
+  user  users  @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  place places @relation(fields: [place_id], references: [id], onDelete: Cascade)
+
+  @@index([place_id])
+  @@index([rating])
+  @@schema("public")
+}
+
+// ====== ALERGIAS Y PREFERENCIAS ======
+
+model allergens {
+  id   String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name String @unique
+
+  user_allergies       user_allergies[]
+  allergen_ingredients allergen_ingredients[]
+
+  @@index([name])
+  @@schema("public")
+}
+
+model allergen_ingredients {
+  allergen_id   String @db.Uuid
+  ingredient_id String @db.Uuid
+
+  allergen   allergens   @relation(fields: [allergen_id], references: [id], onDelete: Cascade)
+  ingredient ingredients @relation(fields: [ingredient_id], references: [id], onDelete: Cascade)
+
+  @@id([allergen_id, ingredient_id])
+  @@schema("public")
+}
+
+model user_allergies {
+  user_id     String @db.Uuid
+  allergen_id String @db.Uuid
+
+  user     users     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  allergen allergens @relation(fields: [allergen_id], references: [id], onDelete: Cascade)
+
+  @@id([user_id, allergen_id])
+  @@index([user_id])
+  @@schema("public")
+}
+
+model preferences {
+  id   String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name String @unique // ej: "Vegano", "Sin gluten", "Bajo en calorías"
+
+  user_preferences user_preferences[]
+
+  @@index([name])
+  @@schema("public")
+}
+
+model user_preferences {
+  user_id       String @db.Uuid
+  preference_id String @db.Uuid
+
+  user       users       @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  preference preferences @relation(fields: [preference_id], references: [id], onDelete: Cascade)
+
+  @@id([user_id, preference_id])
+  @@index([user_id])
+  @@schema("public")
+}
+
+// ====== CONFIGURACIÓN DE USUARIO ======
 
 model user_settings {
-  user_id         String   @id @db.Uuid
-  is_private      Boolean? @default(false)
-  language        String?  @default("es")
-  notify_likes    Boolean? @default(true)
-  notify_comments Boolean? @default(true)
-  notify_follows  Boolean? @default(true)
-  theme           String?  @default("light")
-  users           users    @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  user_id         String  @id @db.Uuid
+  is_private      Boolean @default(false)
+  language        String  @default("es")
+  notify_likes    Boolean @default(true)
+  notify_comments Boolean @default(true)
+  notify_follows  Boolean @default(true)
+  theme           String  @default("light")
+
+  user users @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@schema("public")
 }
 
-// ====== USUARIOS ======
-model users {
-  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  username      String    @unique
-  photo_url     String?
-  bio           String?
-  location      String?
-  birth_date    DateTime  @db.Date
-  registered_at DateTime? @default(now()) @db.Timestamptz(6)
-  updated_at    DateTime? @default(now()) @db.Timestamptz(6)
+// ====== CHAT (1-to-1) ======
 
-  // Relaciones - Existentes
-  comments          comments[]
-  follows_followers follows[]           @relation("follows_followed_idTousers")
-  follows_following follows[]           @relation("follows_follower_idTousers")
-  group_users       group_users[]
-  likes             likes[]
-  place_reviews     place_reviews[]
-  posts             posts[]
-  user_saved_posts  user_saved_posts[]
-  user_viewed_posts user_viewed_posts[]
-  user_settings     user_settings?
-
-  // Relaciones - Chat 1-to-1
-  user_contacts            contacts[]        @relation("user_contacts")
-  contact_user_contacts    contacts[]        @relation("contact_user_contacts")
-  direct_messages_sent     direct_messages[] @relation("sender")
-  direct_messages_received direct_messages[] @relation("receiver")
-
-  // Relaciones - Chat Grupal
-  user_group_members  group_members[]  @relation("user_group_members")
-  user_group_messages group_messages[] @relation("user_group_messages")
-
-  @@schema("public")
-}
-
-// ====== CHAT 1-to-1 ======
-
-// Contactos (1-to-1)
 model contacts {
-  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  user_id         String    @db.Uuid
-  contact_user_id String    @db.Uuid
-  created_at      DateTime? @default(now()) @db.Timestamptz(6)
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id         String   @db.Uuid
+  contact_user_id String   @db.Uuid
+  created_at      DateTime @default(now()) @db.Timestamptz(6)
 
   user         users @relation("user_contacts", fields: [user_id], references: [id], onDelete: Cascade)
   contact_user users @relation("contact_user_contacts", fields: [contact_user_id], references: [id], onDelete: Cascade)
@@ -241,69 +479,20 @@ model contacts {
   @@schema("public")
 }
 
-// Mensajes directos (1-to-1)
 model direct_messages {
   id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   sender_id   String    @db.Uuid
   receiver_id String    @db.Uuid
   content     String
-  created_at  DateTime? @default(now()) @db.Timestamptz(6)
-  read_at     DateTime?
+  media_url   String?   // Para enviar imágenes/videos en chat
+  created_at  DateTime  @default(now()) @db.Timestamptz(6)
+  read_at     DateTime? @db.Timestamptz(6)
 
   sender   users @relation("sender", fields: [sender_id], references: [id], onDelete: Cascade)
   receiver users @relation("receiver", fields: [receiver_id], references: [id], onDelete: Cascade)
 
   @@index([sender_id])
   @@index([receiver_id])
-  @@schema("public")
-}
-
-// ====== CHAT GRUPAL ======
-
-// Grupos de chat
-model chat_groups {
-  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name        String
-  description String?
-  avatar_url  String?
-  created_at  DateTime? @default(now()) @db.Timestamptz(6)
-  updated_at  DateTime? @default(now()) @db.Timestamptz(6)
-
-  group_members  group_members[]
-  group_messages group_messages[]
-
-  @@schema("public")
-}
-
-// Miembros del grupo
-model group_members {
-  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  group_id  String    @db.Uuid
-  user_id   String    @db.Uuid
-  role      String    @default("member")
-  joined_at DateTime? @default(now()) @db.Timestamptz(6)
-
-  chat_group chat_groups @relation(fields: [group_id], references: [id], onDelete: Cascade)
-  user       users       @relation("user_group_members", fields: [user_id], references: [id], onDelete: Cascade)
-
-  @@unique([group_id, user_id])
-  @@index([group_id])
-  @@index([user_id])
-  @@schema("public")
-}
-
-// Mensajes del grupo
-model group_messages {
-  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  group_id   String    @db.Uuid
-  sender_id  String    @db.Uuid
-  content    String
-  created_at DateTime? @default(now()) @db.Timestamptz(6)
-
-  chat_group chat_groups @relation(fields: [group_id], references: [id], onDelete: Cascade)
-  sender     users       @relation("user_group_messages", fields: [sender_id], references: [id], onDelete: Cascade)
-
-  @@index([group_id])
-  @@index([sender_id])
+  @@index([created_at(sort: Desc)])
   @@schema("public")
 }
