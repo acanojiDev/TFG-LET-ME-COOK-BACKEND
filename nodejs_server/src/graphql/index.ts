@@ -1,5 +1,6 @@
 
-import { ApolloServer , ApolloServerPlugin} from '@apollo/server';
+import { ApolloServer } from '@apollo/server';
+import { ApolloServerPluginLandingPageLocalDefault, ApolloServerPluginLandingPageProductionDefault } from '@apollo/server/plugin/landingPage/default';
 import { expressMiddleware } from '@as-integrations/express5';
 import { typeDefs, resolvers } from './schema';
 import { createContext, Context } from './context';
@@ -15,6 +16,11 @@ export async function createApolloServer() {
 		typeDefs,
 		resolvers,
 		introspection: true,
+		plugins: [
+			process.env.NODE_ENV === 'production'
+				? ApolloServerPluginLandingPageProductionDefault()
+				: ApolloServerPluginLandingPageLocalDefault({ embed: true })
+		]
 	});
 
 	await apolloServer.start();

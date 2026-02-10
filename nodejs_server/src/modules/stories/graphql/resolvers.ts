@@ -2,33 +2,25 @@ import { Context } from '../../../graphql/context';
 
 export const resolvers = {
 	Story: {
-		user: async (parent: any, _: any, ctx: Context) => {
-			return await ctx.prisma.users.findUnique({
-				where: { id: parent.user_id }
-			});
+		// ✅ AHORA: USA DataLoader
+		user: (parent: any, _: any, ctx: Context) => {
+			console.log('📊 [Resolver] Story.user - USA DataLoader');
+			return ctx.loaders.user.load(parent.user_id);
 		},
 
 		isActive: (parent: any) => {
 			return new Date(parent.expires_at) > new Date();
 		},
 
-		viewCount: async (parent: any, _: any, ctx: Context) => {
-			return await ctx.prisma.viewed_stories.count({
-				where: { story_id: parent.id }
-			});
+		// ✅ AHORA: USA DataLoader
+		viewCount: (parent: any, _: any, ctx: Context) => {
+			return ctx.loaders.storyViewCount.load(parent.id);
 		},
 
-		isViewedByCurrentUser: async (parent: any, _: any, ctx: Context) => {
+		// ✅ AHORA: USA DataLoader
+		isViewedByCurrentUser: (parent: any, _: any, ctx: Context) => {
 			if (!ctx.currentUserId) return false;
-			const viewed = await ctx.prisma.viewed_stories.findUnique({
-				where: {
-					user_id_story_id: {
-						user_id: ctx.currentUserId,
-						story_id: parent.id
-					}
-				}
-			});
-			return !!viewed;
+			return ctx.loaders.userViewedStory.load({ storyId: parent.id });
 		},
 
 		viewers: async (parent: any, _: any, ctx: Context) => {
@@ -92,7 +84,16 @@ export const resolvers = {
 		},
 
 		deleteStory: async (_: any, args: any, ctx: Context) => {
-			await ctx.prisma.stories.delete({ where: { id: args.id } }); // Add check for ownership
+			if (!ctx.currentUserId) throw new Error('Not authenticated');
+
+			// Verificar que la story existe y pertenece al usuario
+			const story = await ctx.prisma.stories.findUnique({ where: { id: args.id } });
+			if (!story) throw new Error('Story not found');
+			if (story.user_id !== ctx.currentUserId) {
+				throw new Error('Not authorized to delete this story');
+			}
+
+			await ctx.prisma.stories.delete({ where: { id: args.id } });
 			return true;
 		},
 

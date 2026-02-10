@@ -1,13 +1,14 @@
 import { PrismaClient } from '@prisma/client';
 import { Request } from 'express';
 import { prisma } from '../config/database';
-import { createLoaders, Loaders } from '../dataloaders'; // ← NUEVO
+import { createLoaders, Loaders } from '../dataloaders';
+import { supabase } from '../config/supabase';
 
 export interface Context {
 	prisma: PrismaClient;
 	req: Request;
 	currentUserId?: string;
-	loaders: Loaders; // ← NUEVO
+	loaders: Loaders;
 }
 
 export const createContext = async ({ req }: { req: Request }): Promise<Context> => {
@@ -15,8 +16,15 @@ export const createContext = async ({ req }: { req: Request }): Promise<Context>
 	let currentUserId: string | undefined;
 
 	if (token) {
-		if (token.length > 20) {
-			currentUserId = token;
+		try {
+			// Validar el JWT de Supabase y extraer el user ID del payload
+			const { data: { user }, error } = await supabase.auth.getUser(token);
+			if (!error && user) {
+				currentUserId = user.id;
+			}
+		} catch (err) {
+			console.error('Error validating token:', err);
+			// Token inválido o expirado - currentUserId permanece undefined
 		}
 	}
 
@@ -24,6 +32,6 @@ export const createContext = async ({ req }: { req: Request }): Promise<Context>
 		prisma,
 		req,
 		currentUserId,
-		loaders: createLoaders(prisma, currentUserId) // ← NUEVO: crear loaders
+		loaders: createLoaders(prisma, currentUserId)
 	};
 };

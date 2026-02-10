@@ -4,18 +4,14 @@ import { Context } from '../../../graphql/context';
 
 export const resolvers = {
 	Place: {
-		averageRating: async (parent: any, _: any, ctx: Context) => {
-			const result = await ctx.prisma.place_reviews.aggregate({
-				where: { place_id: parent.id },
-				_avg: { rating: true }
-			});
-			return result._avg.rating || null;
+		// ✅ AHORA: USA DataLoader
+		averageRating: (parent: any, _: any, ctx: Context) => {
+			return ctx.loaders.placeAverageRating.load(parent.id);
 		},
 
-		reviewCount: async (parent: any, _: any, ctx: Context) => {
-			return await ctx.prisma.place_reviews.count({
-				where: { place_id: parent.id }
-			});
+		// ✅ AHORA: USA DataLoader
+		reviewCount: (parent: any, _: any, ctx: Context) => {
+			return ctx.loaders.placeReviewCount.load(parent.id);
 		},
 
 		reviews: async (parent: any, args: any, ctx: Context) => {

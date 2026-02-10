@@ -111,7 +111,7 @@ export function createLoaders(prisma: PrismaClient, userId?: string) {
     // USER LIKED POST LOADER - Verifica likes en batch
     // ============================================
     userLikedPost: new DataLoader(
-      async (keys: readonly {postId: string}[]) => {
+      async (keys: readonly { postId: string }[]) => {
         if (!userId) {
           return keys.map(() => false);
         }
@@ -138,7 +138,7 @@ export function createLoaders(prisma: PrismaClient, userId?: string) {
     // USER SAVED POST LOADER
     // ============================================
     userSavedPost: new DataLoader(
-      async (keys: readonly {postId: string}[]) => {
+      async (keys: readonly { postId: string }[]) => {
         if (!userId) {
           return keys.map(() => false);
         }
@@ -163,7 +163,7 @@ export function createLoaders(prisma: PrismaClient, userId?: string) {
     // USER VIEWED POST LOADER
     // ============================================
     userViewedPost: new DataLoader(
-      async (keys: readonly {postId: string}[]) => {
+      async (keys: readonly { postId: string }[]) => {
         if (!userId) {
           return keys.map(() => false);
         }
@@ -236,7 +236,7 @@ export function createLoaders(prisma: PrismaClient, userId?: string) {
     // IS FOLLOWING LOADER
     // ============================================
     isFollowing: new DataLoader(
-      async (keys: readonly {followedId: string}[]) => {
+      async (keys: readonly { followedId: string }[]) => {
         if (!userId) {
           return keys.map(() => false);
         }
@@ -261,7 +261,7 @@ export function createLoaders(prisma: PrismaClient, userId?: string) {
     // IS FOLLOWED BY LOADER
     // ============================================
     isFollowedBy: new DataLoader(
-      async (keys: readonly {followerId: string}[]) => {
+      async (keys: readonly { followerId: string }[]) => {
         if (!userId) {
           return keys.map(() => false);
         }
@@ -280,7 +280,88 @@ export function createLoaders(prisma: PrismaClient, userId?: string) {
         );
       },
       { cacheKeyFn: (key) => `${key.followerId}:${userId}` }
-    )
+    ),
+
+    // ============================================
+    // STORY VIEW COUNT LOADER
+    // ============================================
+    storyViewCount: new DataLoader(async (storyIds: readonly string[]) => {
+      console.log(`📊 [DataLoader] Contando vistas de ${storyIds.length} stories en BATCH`);
+
+      const counts = await prisma.viewed_stories.groupBy({
+        by: ['story_id'],
+        where: { story_id: { in: storyIds as string[] } },
+        _count: true
+      });
+
+      return storyIds.map(storyId => {
+        const result = counts.find(c => c.story_id === storyId);
+        return result?._count || 0;
+      });
+    }),
+
+    // ============================================
+    // USER VIEWED STORY LOADER
+    // ============================================
+    userViewedStory: new DataLoader(
+      async (keys: readonly { storyId: string }[]) => {
+        if (!userId) {
+          return keys.map(() => false);
+        }
+
+        console.log(`📊 [DataLoader] Verificando ${keys.length} vistas de stories en BATCH`);
+
+        const storyIds = keys.map(k => k.storyId);
+
+        const viewed = await prisma.viewed_stories.findMany({
+          where: {
+            user_id: userId,
+            story_id: { in: storyIds }
+          }
+        });
+
+        return keys.map(key =>
+          viewed.some(v => v.story_id === key.storyId)
+        );
+      },
+      { cacheKeyFn: (key) => `${userId}:${key.storyId}` }
+    ),
+
+    // ============================================
+    // PLACE AVERAGE RATING LOADER
+    // ============================================
+    placeAverageRating: new DataLoader(async (placeIds: readonly string[]) => {
+      console.log(`📊 [DataLoader] Calculando rating promedio de ${placeIds.length} places en BATCH`);
+
+      const ratings = await prisma.place_reviews.groupBy({
+        by: ['place_id'],
+        where: { place_id: { in: placeIds as string[] } },
+        _avg: { rating: true }
+      });
+
+      return placeIds.map(placeId => {
+        const result = ratings.find(r => r.place_id === placeId);
+        return result?._avg.rating || null;
+      });
+    }),
+
+    // ============================================
+    // PLACE REVIEW COUNT LOADER
+    // ============================================
+    placeReviewCount: new DataLoader(async (placeIds: readonly string[]) => {
+      console.log(`📊 [DataLoader] Contando reviews de ${placeIds.length} places en BATCH`);
+
+      const counts = await prisma.place_reviews.groupBy({
+        by: ['place_id'],
+        where: { place_id: { in: placeIds as string[] } },
+        _count: true
+      });
+
+      return placeIds.map(placeId => {
+        const result = counts.find(c => c.place_id === placeId);
+        return result?._count || 0;
+      });
+    })
   };
 }
 

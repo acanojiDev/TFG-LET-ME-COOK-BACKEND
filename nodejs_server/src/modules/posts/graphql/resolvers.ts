@@ -366,6 +366,15 @@ export const resolvers = {
 		},
 
 		deletePost: async (_: any, args: any, ctx: Context) => {
+			if (!ctx.currentUserId) throw new Error('Not authenticated');
+
+			// Verificar que el post existe y pertenece al usuario
+			const post = await ctx.prisma.posts.findUnique({ where: { id: args.id } });
+			if (!post) throw new Error('Post not found');
+			if (post.user_id !== ctx.currentUserId) {
+				throw new Error('Not authorized to delete this post');
+			}
+
 			await ctx.prisma.posts.delete({ where: { id: args.id } });
 			return true;
 		},
@@ -422,8 +431,17 @@ export const resolvers = {
 		},
 
 		deleteComment: async (_: any, args: any, ctx: Context) => {
+			if (!ctx.currentUserId) throw new Error('Not authenticated');
+
+			// Verificar que el comentario existe y pertenece al usuario
+			const comment = await ctx.prisma.comments.findUnique({ where: { id: args.commentId } });
+			if (!comment) throw new Error('Comment not found');
+			if (comment.user_id !== ctx.currentUserId) {
+				throw new Error('Not authorized to delete this comment');
+			}
+
 			await ctx.prisma.comments.delete({ where: { id: args.commentId } });
 			return true;
 		}
 	}
-};
+}
