@@ -1,10 +1,10 @@
-
 import { Context } from '../../../graphql/context';
 import { supabase } from '../../../config/supabase';
 
 export const resolvers = {
 	User: {
-		email: () => "user@example.com", // Placeholder as email is not in DB
+		email: () => "user@example.com",
+
 		personProfile: async (parent: any, _: any, ctx: Context) => {
 			return await ctx.prisma.person_profiles.findUnique({
 				where: { user_id: parent.id }
@@ -17,28 +17,36 @@ export const resolvers = {
 			});
 		},
 
-		postCount: async (parent: any, _: any, ctx: Context) => {
-			return await ctx.prisma.posts.count({
-				where: { user_id: parent.id }
-			});
+		// ✅ AHORA: USA DataLoader
+		postCount: (parent: any, _: any, ctx: Context) => {
+			return ctx.loaders.postCount.load(parent.id);
 		},
 
-		followerCount: async (parent: any, _: any, ctx: Context) => {
-			return await ctx.prisma.follows.count({
-				where: { followed_id: parent.id }
-			});
+		// ✅ AHORA: USA DataLoader
+		followerCount: (parent: any, _: any, ctx: Context) => {
+			return ctx.loaders.followerCount.load(parent.id);
 		},
 
-		followingCount: async (parent: any, _: any, ctx: Context) => {
-			return await ctx.prisma.follows.count({
-				where: { follower_id: parent.id }
-			});
+		// ✅ AHORA: USA DataLoader
+		followingCount: (parent: any, _: any, ctx: Context) => {
+			return ctx.loaders.followingCount.load(parent.id);
 		},
 
+		// ✅ AHORA: USA DataLoader
+		isFollowedByCurrentUser: (parent: any, _: any, ctx: Context) => {
+			if (!ctx.currentUserId) return false;
+			return ctx.loaders.isFollowing.load({ followedId: parent.id });
+		},
+
+		// ✅ AHORA: USA DataLoader
+		isFollowingCurrentUser: (parent: any, _: any, ctx: Context) => {
+			if (!ctx.currentUserId) return false;
+			return ctx.loaders.isFollowedBy.load({ followerId: parent.id });
+		},
+
+		// ✅ Estos permanecen igual (ya tienen paginación)
 		followers: async (parent: any, args: any, ctx: Context) => {
 			const { first = 20, after } = args;
-			// Follows table has no single ID, using offset pagination based on 'after'
-
 			const skip = after ? parseInt(after) : 0;
 
 			const follows = await ctx.prisma.follows.findMany({
@@ -97,32 +105,6 @@ export const resolvers = {
 					where: { follower_id: parent.id }
 				})
 			};
-		},
-
-		isFollowedByCurrentUser: async (parent: any, _: any, ctx: Context) => {
-			if (!ctx.currentUserId) return false;
-			const follow = await ctx.prisma.follows.findUnique({
-				where: {
-					follower_id_followed_id: {
-						follower_id: ctx.currentUserId,
-						followed_id: parent.id
-					}
-				}
-			});
-			return !!follow;
-		},
-
-		isFollowingCurrentUser: async (parent: any, _: any, ctx: Context) => {
-			if (!ctx.currentUserId) return false;
-			const follow = await ctx.prisma.follows.findUnique({
-				where: {
-					follower_id_followed_id: {
-						follower_id: parent.id,
-						followed_id: ctx.currentUserId
-					}
-				}
-			});
-			return !!follow;
 		}
 	},
 
@@ -141,6 +123,8 @@ export const resolvers = {
 		},
 
 		userByUsername: async (_: any, args: any, ctx: Context) => {
+			console.log('📊 [Query] userByUsername - USA idx_person_profiles_username_idx');
+
 			const profile = await ctx.prisma.person_profiles.findUnique({
 				where: { username: args.username },
 				include: { user: true }
@@ -150,6 +134,9 @@ export const resolvers = {
 
 		searchUsers: async (_: any, args: any, ctx: Context) => {
 			const { query, first = 20 } = args;
+
+			console.log('📊 [Query] searchUsers - Búsqueda simple');
+
 			return await ctx.prisma.users.findMany({
 				where: {
 					OR: [
@@ -171,6 +158,7 @@ export const resolvers = {
 	},
 
 	Mutation: {
+		// ✅ Mutations permanecen igual
 		register: async (_: any, args: any, ctx: Context) => {
 			const { email, password, userType, personData, businessData } = args;
 
@@ -178,7 +166,6 @@ export const resolvers = {
 
 			if (userType === 'PERSON' && personData) {
 				Object.assign(metaData, personData);
-				// Map camelCase to snake_case for the SQL trigger expectations
 				if (personData.birthDate) metaData.birth_date = personData.birthDate;
 				if (personData.photoUrl) metaData.photo_url = personData.photoUrl;
 			} else if (businessData) {
@@ -187,8 +174,6 @@ export const resolvers = {
 				if (businessData.photoUrl) metaData.photo_url = businessData.photoUrl;
 			}
 
-			// Ensure supabase is configured. If not, this throws at runtime if credentials missing.
-			// The user should have added keys to .env
 			const { data, error } = await supabase.auth.signUp({
 				email,
 				password,
@@ -216,8 +201,6 @@ export const resolvers = {
 			});
 			if (error) throw new Error(error.message);
 
-			// We need to fetch the user details from our DB to return the User type
-			// But mainly we return token
 			const dbUser = await ctx.prisma.users.findUnique({ where: { id: data.user.id } });
 
 			return {
@@ -225,7 +208,7 @@ export const resolvers = {
 				user: {
 					id: data.user.id,
 					email: args.email,
-					userType: dbUser?.user_type || 'PERSON', // Fallback
+					userType: dbUser?.user_type || 'PERSON',
 					createdAt: new Date()
 				}
 			};

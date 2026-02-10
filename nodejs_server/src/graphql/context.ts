@@ -1,12 +1,13 @@
-
 import { PrismaClient } from '@prisma/client';
 import { Request } from 'express';
 import { prisma } from '../config/database';
+import { createLoaders, Loaders } from '../dataloaders'; // ← NUEVO
 
 export interface Context {
 	prisma: PrismaClient;
 	req: Request;
 	currentUserId?: string;
+	loaders: Loaders; // ← NUEVO
 }
 
 export const createContext = async ({ req }: { req: Request }): Promise<Context> => {
@@ -22,6 +23,7 @@ export const createContext = async ({ req }: { req: Request }): Promise<Context>
 	return {
 		prisma,
 		req,
-		currentUserId
+		currentUserId,
+		loaders: createLoaders(prisma, currentUserId) // ← NUEVO: crear loaders
 	};
 };

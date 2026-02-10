@@ -1,21 +1,58 @@
-
 import { Context } from '../../../graphql/context';
 
 export const resolvers = {
 	Post: {
-		user: async (parent: any, _: any, ctx: Context) => {
-			return await ctx.prisma.users.findUnique({
-				where: { id: parent.user_id }
-			});
+		// ✅ AHORA: USA DataLoader (batch)
+		user: (parent: any, _: any, ctx: Context) => {
+			console.log('📊 [Resolver] Post.user - USA DataLoader');
+			return ctx.loaders.user.load(parent.user_id);
 		},
 
-		media: async (parent: any, _: any, ctx: Context) => {
-			return await ctx.prisma.post_media.findMany({
-				where: { post_id: parent.id },
-				orderBy: { position: 'asc' }
-			});
+		// ✅ AHORA: USA DataLoader
+		media: (parent: any, _: any, ctx: Context) => {
+			console.log('📊 [Resolver] Post.media - USA DataLoader (idx_post_media_batch)');
+			return ctx.loaders.postMedia.load(parent.id);
 		},
 
+		// ✅ AHORA: USA DataLoader
+		likeCount: (parent: any, _: any, ctx: Context) => {
+			return ctx.loaders.likeCount.load(parent.id);
+		},
+
+		// ✅ AHORA: USA DataLoader
+		commentCount: (parent: any, _: any, ctx: Context) => {
+			return ctx.loaders.commentCount.load(parent.id);
+		},
+
+		// ✅ AHORA: USA DataLoader
+		saveCount: (parent: any, _: any, ctx: Context) => {
+			return ctx.loaders.saveCount.load(parent.id);
+		},
+
+		// ✅ AHORA: USA DataLoader
+		viewCount: (parent: any, _: any, ctx: Context) => {
+			return ctx.loaders.viewCount.load(parent.id);
+		},
+
+		// ✅ AHORA: USA DataLoader
+		isLikedByCurrentUser: (parent: any, _: any, ctx: Context) => {
+			if (!ctx.currentUserId) return false;
+			return ctx.loaders.userLikedPost.load({ postId: parent.id });
+		},
+
+		// ✅ AHORA: USA DataLoader
+		isSavedByCurrentUser: (parent: any, _: any, ctx: Context) => {
+			if (!ctx.currentUserId) return false;
+			return ctx.loaders.userSavedPost.load({ postId: parent.id });
+		},
+
+		// ✅ AHORA: USA DataLoader
+		isViewedByCurrentUser: (parent: any, _: any, ctx: Context) => {
+			if (!ctx.currentUserId) return false;
+			return ctx.loaders.userViewedPost.load({ postId: parent.id });
+		},
+
+		// ✅ Este ya está bien (usa índices automáticamente)
 		recipe: async (parent: any, _: any, ctx: Context) => {
 			if (parent.post_type !== 'RECIPE') return null;
 			return await ctx.prisma.recipes.findUnique({
@@ -23,70 +60,7 @@ export const resolvers = {
 			});
 		},
 
-		likeCount: async (parent: any, _: any, ctx: Context) => {
-			// Redis cache logic omitted
-			return await ctx.prisma.likes.count({
-				where: { post_id: parent.id }
-			});
-		},
-
-		commentCount: async (parent: any, _: any, ctx: Context) => {
-			return await ctx.prisma.comments.count({
-				where: { post_id: parent.id }
-			});
-		},
-
-		saveCount: async (parent: any, _: any, ctx: Context) => {
-			return await ctx.prisma.saved_posts.count({
-				where: { post_id: parent.id }
-			});
-		},
-
-		viewCount: async (parent: any, _: any, ctx: Context) => {
-			return await ctx.prisma.viewed_posts.count({
-				where: { post_id: parent.id }
-			});
-		},
-
-		isLikedByCurrentUser: async (parent: any, _: any, ctx: Context) => {
-			if (!ctx.currentUserId) return false;
-			const like = await ctx.prisma.likes.findUnique({
-				where: {
-					user_id_post_id: {
-						user_id: ctx.currentUserId,
-						post_id: parent.id
-					}
-				}
-			});
-			return !!like;
-		},
-
-		isSavedByCurrentUser: async (parent: any, _: any, ctx: Context) => {
-			if (!ctx.currentUserId) return false;
-			const saved = await ctx.prisma.saved_posts.findUnique({
-				where: {
-					user_id_post_id: {
-						user_id: ctx.currentUserId,
-						post_id: parent.id
-					}
-				}
-			});
-			return !!saved;
-		},
-
-		isViewedByCurrentUser: async (parent: any, _: any, ctx: Context) => {
-			if (!ctx.currentUserId) return false;
-			const viewed = await ctx.prisma.viewed_posts.findUnique({
-				where: {
-					user_id_post_id: {
-						user_id: ctx.currentUserId,
-						post_id: parent.id
-					}
-				}
-			});
-			return !!viewed;
-		},
-
+		// ✅ Este ya está bien
 		comments: async (parent: any, args: any, ctx: Context) => {
 			const { first = 20, after } = args;
 			const comments = await ctx.prisma.comments.findMany({
@@ -94,7 +68,7 @@ export const resolvers = {
 				take: first + 1,
 				skip: after ? 1 : 0,
 				cursor: after ? { id: after } : undefined,
-				orderBy: { created_at: 'desc' }
+				orderBy: { created_at: 'desc' } // ← Usa idx_comments_post_id_created_at
 			});
 
 			const hasNextPage = comments.length > first;
@@ -117,9 +91,8 @@ export const resolvers = {
 			};
 		},
 
+		// ✅ Este ya está bien
 		likes: async (parent: any, args: any, ctx: Context) => {
-			// Implementation for likes connection or list
-			// Prompt says [User!]! and args (first: Int)
 			const { first = 20 } = args;
 			const likes = await ctx.prisma.likes.findMany({
 				where: { post_id: parent.id },
@@ -130,7 +103,19 @@ export const resolvers = {
 		}
 	},
 
+	// ✅ Agregar resolver para Comment.user
+	Comment: {
+		user: (parent: any, _: any, ctx: Context) => {
+			return ctx.loaders.user.load(parent.user_id);
+		},
+
+		post: async (parent: any, _: any, ctx: Context) => {
+			return await ctx.prisma.posts.findUnique({ where: { id: parent.post_id } });
+		}
+	},
+
 	User: {
+		// ✅ Este ya está bien (solo agregar tipo Loaders si falta)
 		posts: async (parent: any, args: any, ctx: Context) => {
 			const { first = 20, after, orderBy } = args;
 
@@ -220,12 +205,15 @@ export const resolvers = {
 			if (!ctx.currentUserId) throw new Error('Not authenticated');
 			const { first = 20, after } = args;
 
+			console.log('📊 [Query] homeFeed - USA índices');
+
 			const following = await ctx.prisma.follows.findMany({
 				where: { follower_id: ctx.currentUserId },
 				select: { followed_id: true }
 			});
 			const followingIds = following.map(f => f.followed_id);
 
+			// Esta query usa idx_posts_user_created automáticamente
 			const posts = await ctx.prisma.posts.findMany({
 				where: { user_id: { in: followingIds } },
 				take: first + 1,
@@ -256,6 +244,10 @@ export const resolvers = {
 
 		explorePosts: async (_: any, args: any, ctx: Context) => {
 			const { categories, first = 20, after } = args;
+
+			console.log('📊 [Query] explorePosts - USA idx_posts_categories_idx');
+
+			// Esta query usa idx_posts_categories_idx automáticamente
 			const posts = await ctx.prisma.posts.findMany({
 				where: categories ? { categories: { hasSome: categories } } : {},
 				take: first + 1,
@@ -290,6 +282,9 @@ export const resolvers = {
 
 		searchPosts: async (_: any, args: any, ctx: Context) => {
 			const { query, first = 20 } = args;
+
+			console.log('📊 [Query] searchPosts - Búsqueda simple');
+
 			return await ctx.prisma.posts.findMany({
 				where: {
 					OR: [
@@ -303,6 +298,7 @@ export const resolvers = {
 	},
 
 	Mutation: {
+		// ✅ Las mutations permanecen igual
 		createPost: async (_: any, args: any, ctx: Context) => {
 			if (!ctx.currentUserId) throw new Error('Not authenticated');
 			const { input } = args;
@@ -366,7 +362,6 @@ export const resolvers = {
 		},
 
 		updatePost: async (_: any, args: any, ctx: Context) => {
-			// ... simplified
 			return await ctx.prisma.posts.findUnique({ where: { id: args.id } });
 		},
 
@@ -380,7 +375,6 @@ export const resolvers = {
 			await ctx.prisma.likes.create({
 				data: { user_id: ctx.currentUserId, post_id: args.postId }
 			});
-			// await redis.del(...)
 			return await ctx.prisma.posts.findUnique({ where: { id: args.postId } });
 		},
 
