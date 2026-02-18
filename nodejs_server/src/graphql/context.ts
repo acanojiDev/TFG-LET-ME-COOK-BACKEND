@@ -1,3 +1,4 @@
+// src/graphql/context.ts - VERSIÓN MEJORADA
 import { PrismaClient } from '@prisma/client';
 import { Request } from 'express';
 import { prisma } from '../config/database';
@@ -8,30 +9,61 @@ export interface Context {
 	prisma: PrismaClient;
 	req: Request;
 	currentUserId?: string;
+	currentUserEmail?: string;
 	loaders: Loaders;
+	isAuthenticated: boolean;
 }
 
+/**
+ * Crear contexto para cada request de GraphQL
+ * Valida el JWT de Supabase y extrae información del usuario
+ */
 export const createContext = async ({ req }: { req: Request }): Promise<Context> => {
-	const token = req.headers.authorization?.split(' ')[1];
 	let currentUserId: string | undefined;
+	let currentUserEmail: string | undefined;
+	let isAuthenticated = false;
 
-	if (token) {
-		try {
-			// Validar el JWT de Supabase y extraer el user ID del payload
-			const { data: { user }, error } = await supabase.auth.getUser(token);
-			if (!error && user) {
-				currentUserId = user.id;
+	try {
+		// Extraer token del header Authorization: Bearer {token}
+		const authHeader = req.headers.authorization;
+
+		if (authHeader && authHeader.startsWith('Bearer ')) {
+			const token = authHeader.slice(7); // Remover "Bearer "
+
+			if (!token) {
+				console.warn('⚠️ Token vacío en Authorization header');
+			} else {
+				try {
+					// Validar token con Supabase
+					// supabase.auth.getUser(token) valida el JWT automáticamente
+					const { data: { user }, error } = await supabase.auth.getUser(token);
+
+					if (error) {
+						console.warn(`⚠️ Token inválido o expirado: ${error.message}`);
+					} else if (user) {
+						currentUserId = user.id;
+						currentUserEmail = user.email;
+						isAuthenticated = true;
+						console.log(`✅ Usuario autenticado: ${currentUserEmail} (${currentUserId})`);
+					}
+				} catch (err: any) {
+					console.error(`❌ Error validando token: ${err.message}`);
+				}
 			}
-		} catch (err) {
-			console.error('Error validating token:', err);
-			// Token inválido o expirado - currentUserId permanece undefined
+		} else {
+			// Sin token es válido, solo rutas públicas
+			console.log('ℹ️ Request sin token (acceso público)');
 		}
+	} catch (err: any) {
+		console.error(`❌ Error en createContext: ${err.message}`);
 	}
 
 	return {
 		prisma,
 		req,
 		currentUserId,
-		loaders: createLoaders(prisma, currentUserId)
+		currentUserEmail,
+		loaders: createLoaders(prisma, currentUserId),
+		isAuthenticated
 	};
 };
