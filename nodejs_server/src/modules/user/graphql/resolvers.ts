@@ -3,7 +3,8 @@ import { supabase } from '../../../config/supabase';
 import {
 	NotAuthenticatedError,
 	NotFoundError,
-	ConflictError
+	ConflictError,
+	requirePerson
 } from '../../../graphql/errors';
 import {
 	validate,
@@ -228,7 +229,7 @@ export const resolvers = {
 		},
 
 		followUser: async (_: any, args: any, ctx: Context) => {
-			if (!ctx.currentUserId) throw new NotAuthenticatedError();
+			requirePerson(ctx, 'follow users');
 			const target = await ctx.prisma.users.findUnique({ where: { id: args.userId } });
 			if (!target) throw new NotFoundError('User');
 			await ctx.prisma.follows.create({
@@ -238,7 +239,7 @@ export const resolvers = {
 		},
 
 		unfollowUser: async (_: any, args: any, ctx: Context) => {
-			if (!ctx.currentUserId) throw new NotAuthenticatedError();
+			requirePerson(ctx, 'unfollow users');
 			await ctx.prisma.follows.delete({
 				where: {
 					follower_id_followed_id: {
@@ -290,7 +291,7 @@ export const resolvers = {
 		},
 
 		updateAllergies: async (_: any, args: any, ctx: Context) => {
-			if (!ctx.currentUserId) throw new NotAuthenticatedError();
+			requirePerson(ctx, 'update allergies');
 			const { allergenIds } = validate(UpdateAllergyInputSchema, args);
 
 			await ctx.prisma.user_allergies.deleteMany({ where: { user_id: ctx.currentUserId } });
@@ -307,7 +308,7 @@ export const resolvers = {
 		},
 
 		updatePreferences: async (_: any, args: any, ctx: Context) => {
-			if (!ctx.currentUserId) throw new NotAuthenticatedError();
+			requirePerson(ctx, 'update preferences');
 			const { preferenceIds } = validate(UpdatePreferenceInputSchema, args);
 
 			await ctx.prisma.user_preferences.deleteMany({ where: { user_id: ctx.currentUserId } });

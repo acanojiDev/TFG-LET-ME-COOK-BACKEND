@@ -1,5 +1,5 @@
 import { Context } from '../../../graphql/context';
-import { NotAuthenticatedError } from '../../../graphql/errors';
+import { requirePerson } from '../../../graphql/errors';
 import { validate, ReviewPlaceInputSchema } from '../../../graphql/validation';
 
 export const resolvers = {
@@ -80,11 +80,12 @@ export const resolvers = {
 
 	Mutation: {
 		reviewPlace: async (_: any, args: any, ctx: Context) => {
-			if (!ctx.currentUserId) throw new NotAuthenticatedError();
+			// Solo usuarios PERSON pueden dejar reviews
+			requirePerson(ctx, 'review a place');
 			const { placeId, rating, comment, photoUrl } = validate(ReviewPlaceInputSchema, args);
 			return await ctx.prisma.place_reviews.create({
 				data: {
-					user_id: ctx.currentUserId,
+					user_id: ctx.currentUserId!,
 					place_id: placeId,
 					rating,
 					comment,
