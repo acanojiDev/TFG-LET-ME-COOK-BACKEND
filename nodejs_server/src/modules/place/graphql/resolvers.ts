@@ -1,6 +1,6 @@
-
-import { PrismaClient } from '@prisma/client';
 import { Context } from '../../../graphql/context';
+import { NotAuthenticatedError } from '../../../graphql/errors';
+import { validate, ReviewPlaceInputSchema } from '../../../graphql/validation';
 
 export const resolvers = {
 	Place: {
@@ -80,15 +80,15 @@ export const resolvers = {
 
 	Mutation: {
 		reviewPlace: async (_: any, args: any, ctx: Context) => {
-			if (!ctx.currentUserId) throw new Error('Not authenticated');
-			// Create review
+			if (!ctx.currentUserId) throw new NotAuthenticatedError();
+			const { placeId, rating, comment, photoUrl } = validate(ReviewPlaceInputSchema, args);
 			return await ctx.prisma.place_reviews.create({
 				data: {
 					user_id: ctx.currentUserId,
-					place_id: args.placeId,
-					rating: args.rating,
-					comment: args.comment,
-					photo_url: args.photoUrl,
+					place_id: placeId,
+					rating,
+					comment,
+					photo_url: photoUrl,
 					created_at: new Date()
 				}
 			});

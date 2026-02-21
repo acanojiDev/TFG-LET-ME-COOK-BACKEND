@@ -35,6 +35,7 @@
     "prisma": "^7.0.1",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.1",
+    "graphql-query-complexity": "^1.1.0",
     "zod": "^4.1.12"
   },
   "devDependencies": {

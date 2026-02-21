@@ -28,34 +28,22 @@ export const createContext = async ({ req }: { req: Request }): Promise<Context>
 		const authHeader = req.headers.authorization;
 
 		if (authHeader && authHeader.startsWith('Bearer ')) {
-			const token = authHeader.slice(7); // Remover "Bearer "
-
-			if (!token) {
-				console.warn('⚠️ Token vacío en Authorization header');
-			} else {
+			const token = authHeader.slice(7);
+			if (token) {
 				try {
-					// Validar token con Supabase
-					// supabase.auth.getUser(token) valida el JWT automáticamente
 					const { data: { user }, error } = await supabase.auth.getUser(token);
-
-					if (error) {
-						console.warn(`⚠️ Token inválido o expirado: ${error.message}`);
-					} else if (user) {
+					if (!error && user) {
 						currentUserId = user.id;
 						currentUserEmail = user.email;
 						isAuthenticated = true;
-						console.log(`✅ Usuario autenticado: ${currentUserEmail} (${currentUserId})`);
 					}
 				} catch (err: any) {
-					console.error(`❌ Error validando token: ${err.message}`);
+					console.error(`Error validando token: ${err.message}`);
 				}
 			}
-		} else {
-			// Sin token es válido, solo rutas públicas
-			console.log('ℹ️ Request sin token (acceso público)');
 		}
 	} catch (err: any) {
-		console.error(`❌ Error en createContext: ${err.message}`);
+		console.error(`Error en createContext: ${err.message}`);
 	}
 
 	return {

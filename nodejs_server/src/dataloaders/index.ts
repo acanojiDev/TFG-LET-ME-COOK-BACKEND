@@ -8,8 +8,6 @@ export function createLoaders(prisma: PrismaClient, userId?: string) {
     // PostgreSQL usa el índice automáticamente
     // ============================================
     user: new DataLoader(async (userIds: readonly string[]) => {
-      console.log(`📊 [DataLoader] Cargando ${userIds.length} usuarios en BATCH`);
-
       const users = await prisma.users.findMany({
         where: { id: { in: userIds as string[] } },
         include: {
@@ -26,8 +24,6 @@ export function createLoaders(prisma: PrismaClient, userId?: string) {
     // POST MEDIA LOADER - USA idx_post_media_batch
     // ============================================
     postMedia: new DataLoader(async (postIds: readonly string[]) => {
-      console.log(`📊 [DataLoader] Cargando media de ${postIds.length} posts en BATCH`);
-
       const media = await prisma.post_media.findMany({
         where: { post_id: { in: postIds as string[] } },
         orderBy: { position: 'asc' }
@@ -43,8 +39,6 @@ export function createLoaders(prisma: PrismaClient, userId?: string) {
     // LIKE COUNT LOADER - Cuenta likes en batch
     // ============================================
     likeCount: new DataLoader(async (postIds: readonly string[]) => {
-      console.log(`📊 [DataLoader] Contando likes de ${postIds.length} posts en BATCH`);
-
       const counts = await prisma.likes.groupBy({
         by: ['post_id'],
         where: { post_id: { in: postIds as string[] } },
@@ -61,8 +55,6 @@ export function createLoaders(prisma: PrismaClient, userId?: string) {
     // COMMENT COUNT LOADER
     // ============================================
     commentCount: new DataLoader(async (postIds: readonly string[]) => {
-      console.log(`📊 [DataLoader] Contando comentarios de ${postIds.length} posts en BATCH`);
-
       const counts = await prisma.comments.groupBy({
         by: ['post_id'],
         where: { post_id: { in: postIds as string[] } },
@@ -115,8 +107,6 @@ export function createLoaders(prisma: PrismaClient, userId?: string) {
         if (!userId) {
           return keys.map(() => false);
         }
-
-        console.log(`📊 [DataLoader] Verificando ${keys.length} likes en BATCH`);
 
         const postIds = keys.map(k => k.postId);
 
@@ -286,8 +276,6 @@ export function createLoaders(prisma: PrismaClient, userId?: string) {
     // STORY VIEW COUNT LOADER
     // ============================================
     storyViewCount: new DataLoader(async (storyIds: readonly string[]) => {
-      console.log(`📊 [DataLoader] Contando vistas de ${storyIds.length} stories en BATCH`);
-
       const counts = await prisma.viewed_stories.groupBy({
         by: ['story_id'],
         where: { story_id: { in: storyIds as string[] } },
@@ -309,8 +297,6 @@ export function createLoaders(prisma: PrismaClient, userId?: string) {
           return keys.map(() => false);
         }
 
-        console.log(`📊 [DataLoader] Verificando ${keys.length} vistas de stories en BATCH`);
-
         const storyIds = keys.map(k => k.storyId);
 
         const viewed = await prisma.viewed_stories.findMany({
@@ -331,8 +317,6 @@ export function createLoaders(prisma: PrismaClient, userId?: string) {
     // PLACE AVERAGE RATING LOADER
     // ============================================
     placeAverageRating: new DataLoader(async (placeIds: readonly string[]) => {
-      console.log(`📊 [DataLoader] Calculando rating promedio de ${placeIds.length} places en BATCH`);
-
       const ratings = await prisma.place_reviews.groupBy({
         by: ['place_id'],
         where: { place_id: { in: placeIds as string[] } },
@@ -349,8 +333,6 @@ export function createLoaders(prisma: PrismaClient, userId?: string) {
     // PLACE REVIEW COUNT LOADER
     // ============================================
     placeReviewCount: new DataLoader(async (placeIds: readonly string[]) => {
-      console.log(`📊 [DataLoader] Contando reviews de ${placeIds.length} places en BATCH`);
-
       const counts = await prisma.place_reviews.groupBy({
         by: ['place_id'],
         where: { place_id: { in: placeIds as string[] } },
