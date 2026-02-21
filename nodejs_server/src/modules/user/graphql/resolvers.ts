@@ -174,35 +174,76 @@ export const resolvers = {
 	},
 
 	Mutation: {
-		// ✅ Mutations permanecen igual
 		register: async (_: any, args: any, ctx: Context) => {
-			const { email, password, userType, personData, businessData } = validate(RegisterInputSchema, args);
+			const { email, password, userType, personData, businessData, allergenIds, preferenceIds } = validate(RegisterInputSchema, args);
 
-			const metaData: any = { user_type: userType };
+			// 1. Crear usuario en Supabase Auth
+			const { data: authData, error: authError } = await supabase.auth.signUp({ email, password });
+			if (authError) throw new ConflictError(authError.message);
+			if (!authData.user) throw new ConflictError('User creation failed');
 
-			if (userType === 'PERSON' && personData) {
-				Object.assign(metaData, personData);
-				if (personData.birthDate) metaData.birth_date = personData.birthDate;
-				if (personData.photoUrl) metaData.photo_url = personData.photoUrl;
-			} else if (businessData) {
-				Object.assign(metaData, businessData);
-				if (businessData.businessName) metaData.business_name = businessData.businessName;
-				if (businessData.photoUrl) metaData.photo_url = businessData.photoUrl;
-			}
+			const userId = authData.user.id;
 
-			const { data, error } = await supabase.auth.signUp({
-				email,
-				password,
-				options: { data: metaData }
+			// 2. Crear registro en tabla users
+			await ctx.prisma.users.upsert({
+				where: { id: userId },
+				create: { id: userId, user_type: userType, created_at: new Date(), updated_at: new Date() },
+				update: { updated_at: new Date() }
 			});
 
-			if (error) throw new ConflictError(error.message);
-			if (!data.user) throw new ConflictError('User creation failed');
+			// 3. Crear perfil según tipo de usuario
+			if (userType === 'PERSON') {
+				const username = personData?.username ?? email.split('@')[0].toLowerCase();
+				await ctx.prisma.person_profiles.upsert({
+					where: { user_id: userId },
+					create: {
+						user_id: userId,
+						username: username.toLowerCase(),
+						full_name: personData?.fullName ?? null,
+						photo_url: personData?.photoUrl ?? null,
+						bio: personData?.bio ?? null,
+						location: personData?.location ?? null,
+						birth_date: personData?.birthDate ? new Date(personData.birthDate) : new Date()
+					},
+					update: {} // ya existe: no sobreescribir en register
+				});
+			} else if ((userType === 'RESTAURANT' || userType === 'BAR') && businessData) {
+				await ctx.prisma.business_profiles.upsert({
+					where: { user_id: userId },
+					create: {
+						user_id: userId,
+						business_name: businessData.businessName ?? email.split('@')[0],
+						photo_url: businessData.photoUrl ?? null,
+						bio: businessData.bio ?? null,
+						location: businessData.location ?? '',
+						specialty: businessData.specialty ?? null,
+						phone: businessData.phone ?? null,
+						website: businessData.website ?? null
+					},
+					update: {} // ya existe: no sobreescribir en register
+				});
+			}
+
+			// 4. Guardar alergias y preferencias iniciales (solo PERSON)
+			if (userType === 'PERSON') {
+				if (allergenIds && allergenIds.length > 0) {
+					await ctx.prisma.user_allergies.createMany({
+						data: allergenIds.map((allergenId) => ({ user_id: userId, allergen_id: allergenId })),
+						skipDuplicates: true
+					});
+				}
+				if (preferenceIds && preferenceIds.length > 0) {
+					await ctx.prisma.user_preferences.createMany({
+						data: preferenceIds.map((preferenceId) => ({ user_id: userId, preference_id: preferenceId })),
+						skipDuplicates: true
+					});
+				}
+			}
 
 			return {
-				token: data.session?.access_token || 'check-email-confirmation',
+				token: authData.session?.access_token ?? 'check-email-confirmation',
 				user: {
-					id: data.user.id,
+					id: userId,
 					email,
 					userType,
 					createdAt: new Date()
@@ -212,18 +253,27 @@ export const resolvers = {
 
 		login: async (_: any, args: any, ctx: Context) => {
 			const { email, password } = validate(LoginInputSchema, args);
-			const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-			if (error) throw new ConflictError(error.message);
+			const { data: authData, error: authError } = await supabase.auth.signInWithPassword({ email, password });
+			if (authError) throw new ConflictError(authError.message);
+			if (!authData.user || !authData.session) throw new ConflictError('Login failed');
 
-			const dbUser = await ctx.prisma.users.findUnique({ where: { id: data.user.id } });
+			const userId = authData.user.id;
+
+			// Recuperar o crear registro en BD (por si el usuario existía en Supabase pero no en la BD)
+			let dbUser = await ctx.prisma.users.findUnique({ where: { id: userId } });
+			if (!dbUser) {
+				dbUser = await ctx.prisma.users.create({
+					data: { id: userId, user_type: 'PERSON', created_at: new Date(), updated_at: new Date() }
+				});
+			}
 
 			return {
-				token: data.session.access_token,
+				token: authData.session.access_token,
 				user: {
-					id: data.user.id,
+					id: userId,
 					email,
-					userType: dbUser?.user_type || 'PERSON',
-					createdAt: new Date()
+					userType: dbUser.user_type,
+					createdAt: dbUser.created_at
 				}
 			};
 		},

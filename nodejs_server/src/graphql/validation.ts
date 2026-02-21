@@ -39,7 +39,9 @@ export const RegisterInputSchema = z.object({
 	password: z.string().min(8, 'Password must be at least 8 characters'),
 	userType: z.enum(['PERSON', 'RESTAURANT', 'BAR']),
 	personData: PersonProfileInputSchema.optional(),
-	businessData: BusinessProfileInputSchema.optional()
+	businessData: BusinessProfileInputSchema.optional(),
+	allergenIds: z.array(z.string()).optional(),
+	preferenceIds: z.array(z.string()).optional()
 });
 
 export const LoginInputSchema = z.object({
