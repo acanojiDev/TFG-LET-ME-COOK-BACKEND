@@ -80,9 +80,7 @@ export async function createApolloServer() {
 		validationRules: [depthLimitRule(MAX_DEPTH)],
 		plugins: [
 			buildComplexityPlugin(),
-			process.env.NODE_ENV === 'production'
-				? ApolloServerPluginLandingPageProductionDefault()
-				: ApolloServerPluginLandingPageLocalDefault({ embed: true })
+			ApolloServerPluginLandingPageLocalDefault({ embed: true })
 		]
 	});
 
