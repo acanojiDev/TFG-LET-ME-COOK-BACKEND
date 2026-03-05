@@ -76,7 +76,7 @@ export async function createApolloServer() {
 	apolloServer = new ApolloServer<Context>({
 		typeDefs,
 		resolvers,
-		introspection: process.env.NODE_ENV !== 'production',
+		introspection: true,
 		validationRules: [depthLimitRule(MAX_DEPTH)],
 		plugins: [
 			buildComplexityPlugin(),
