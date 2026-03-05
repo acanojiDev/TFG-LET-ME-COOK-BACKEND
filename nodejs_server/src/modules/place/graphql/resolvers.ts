@@ -1,6 +1,6 @@
-
-import { PrismaClient } from '@prisma/client';
 import { Context } from '../../../graphql/context';
+import { requirePerson } from '../../../graphql/errors';
+import { validate, ReviewPlaceInputSchema } from '../../../graphql/validation';
 
 export const resolvers = {
 	Place: {
@@ -25,7 +25,7 @@ export const resolvers = {
 			});
 
 			const hasNextPage = reviews.length > first;
-			const edges = reviews.slice(0, first).map(review => ({
+			const edges = reviews.slice(0, first).map((review: { id: any; }) => ({
 				node: review,
 				cursor: review.id
 			}));
@@ -80,15 +80,16 @@ export const resolvers = {
 
 	Mutation: {
 		reviewPlace: async (_: any, args: any, ctx: Context) => {
-			if (!ctx.currentUserId) throw new Error('Not authenticated');
-			// Create review
+			// Solo usuarios PERSON pueden dejar reviews
+			requirePerson(ctx, 'review a place');
+			const { placeId, rating, comment, photoUrl } = validate(ReviewPlaceInputSchema, args);
 			return await ctx.prisma.place_reviews.create({
 				data: {
-					user_id: ctx.currentUserId,
-					place_id: args.placeId,
-					rating: args.rating,
-					comment: args.comment,
-					photo_url: args.photoUrl,
+					user_id: ctx.currentUserId!,
+					place_id: placeId,
+					rating,
+					comment,
+					photo_url: photoUrl,
 					created_at: new Date()
 				}
 			});

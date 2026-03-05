@@ -1,16 +1,16 @@
 import { Context } from '../../../graphql/context';
+import { NotAuthenticatedError, NotFoundError, ForbiddenError } from '../../../graphql/errors';
+import { validate, CreatePostInputSchema, UpdatePostInputSchema, CommentInputSchema } from '../../../graphql/validation';
 
 export const resolvers = {
 	Post: {
 		// ✅ AHORA: USA DataLoader (batch)
 		user: (parent: any, _: any, ctx: Context) => {
-			console.log('📊 [Resolver] Post.user - USA DataLoader');
 			return ctx.loaders.user.load(parent.user_id);
 		},
 
 		// ✅ AHORA: USA DataLoader
 		media: (parent: any, _: any, ctx: Context) => {
-			console.log('📊 [Resolver] Post.media - USA DataLoader (idx_post_media_batch)');
 			return ctx.loaders.postMedia.load(parent.id);
 		},
 
@@ -72,7 +72,7 @@ export const resolvers = {
 			});
 
 			const hasNextPage = comments.length > first;
-			const edges = comments.slice(0, first).map(comment => ({
+			const edges = comments.slice(0, first).map((comment: { id: any; }) => ({
 				node: comment,
 				cursor: comment.id
 			}));
@@ -99,7 +99,7 @@ export const resolvers = {
 				take: first,
 				include: { user: true }
 			});
-			return likes.map(l => l.user);
+			return likes.map((l: { user: any; }) => l.user);
 		}
 	},
 
@@ -131,7 +131,7 @@ export const resolvers = {
 			});
 
 			const hasNextPage = posts.length > first;
-			const edges = posts.slice(0, first).map(post => ({
+			const edges = posts.slice(0, first).map((post: { id: any; }) => ({
 				node: post,
 				cursor: post.id
 			}));
@@ -157,7 +157,7 @@ export const resolvers = {
 				where: { recipe_id: parent.id },
 				include: { ingredient: true }
 			});
-			return recipeIngredients.map(ri => ({
+			return recipeIngredients.map((ri: { ingredient: any; quantity: any; notes: any; }) => ({
 				ingredient: ri.ingredient,
 				quantity: ri.quantity,
 				notes: ri.notes
@@ -172,7 +172,7 @@ export const resolvers = {
 			});
 
 			if (userAllergies.length === 0) return true;
-			const allergenIds = userAllergies.map(ua => ua.allergen_id);
+			const allergenIds = userAllergies.map((ua: { allergen_id: any; }) => ua.allergen_id);
 
 			const dangerousIngredients = await ctx.prisma.recipe_ingredients.count({
 				where: {
@@ -196,22 +196,20 @@ export const resolvers = {
 				where: { ingredient_id: parent.id },
 				include: { allergen: true }
 			});
-			return allergenIngredients.map(ai => ai.allergen);
+			return allergenIngredients.map((ai: { allergen: any; }) => ai.allergen);
 		}
 	},
 
 	Query: {
 		homeFeed: async (_: any, args: any, ctx: Context) => {
-			if (!ctx.currentUserId) throw new Error('Not authenticated');
+			if (!ctx.currentUserId) throw new NotAuthenticatedError();
 			const { first = 20, after } = args;
-
-			console.log('📊 [Query] homeFeed - USA índices');
 
 			const following = await ctx.prisma.follows.findMany({
 				where: { follower_id: ctx.currentUserId },
 				select: { followed_id: true }
 			});
-			const followingIds = following.map(f => f.followed_id);
+			const followingIds = following.map((f: { followed_id: any; }) => f.followed_id);
 
 			// Esta query usa idx_posts_user_created automáticamente
 			const posts = await ctx.prisma.posts.findMany({
@@ -223,7 +221,7 @@ export const resolvers = {
 			});
 
 			const hasNextPage = posts.length > first;
-			const edges = posts.slice(0, first).map(post => ({
+			const edges = posts.slice(0, first).map((post: { id: any; }) => ({
 				node: post,
 				cursor: post.id
 			}));
@@ -245,9 +243,6 @@ export const resolvers = {
 		explorePosts: async (_: any, args: any, ctx: Context) => {
 			const { categories, first = 20, after } = args;
 
-			console.log('📊 [Query] explorePosts - USA idx_posts_categories_idx');
-
-			// Esta query usa idx_posts_categories_idx automáticamente
 			const posts = await ctx.prisma.posts.findMany({
 				where: categories ? { categories: { hasSome: categories } } : {},
 				take: first + 1,
@@ -257,7 +252,7 @@ export const resolvers = {
 			});
 
 			const hasNextPage = posts.length > first;
-			const edges = posts.slice(0, first).map(post => ({
+			const edges = posts.slice(0, first).map((post: { id: any; }) => ({
 				node: post,
 				cursor: post.id
 			}));
@@ -283,8 +278,6 @@ export const resolvers = {
 		searchPosts: async (_: any, args: any, ctx: Context) => {
 			const { query, first = 20 } = args;
 
-			console.log('📊 [Query] searchPosts - Búsqueda simple');
-
 			return await ctx.prisma.posts.findMany({
 				where: {
 					OR: [
@@ -300,8 +293,8 @@ export const resolvers = {
 	Mutation: {
 		// ✅ Las mutations permanecen igual
 		createPost: async (_: any, args: any, ctx: Context) => {
-			if (!ctx.currentUserId) throw new Error('Not authenticated');
-			const { input } = args;
+			if (!ctx.currentUserId) throw new NotAuthenticatedError();
+			const input = validate(CreatePostInputSchema, args.input);
 
 			const post = await ctx.prisma.posts.create({
 				data: {
@@ -362,25 +355,37 @@ export const resolvers = {
 		},
 
 		updatePost: async (_: any, args: any, ctx: Context) => {
-			return await ctx.prisma.posts.findUnique({ where: { id: args.id } });
+			if (!ctx.currentUserId) throw new NotAuthenticatedError();
+			const { id } = args;
+			const input = validate(UpdatePostInputSchema, args.input);
+
+			const post = await ctx.prisma.posts.findUnique({ where: { id } });
+			if (!post) throw new NotFoundError('Post');
+			if (post.user_id !== ctx.currentUserId) throw new ForbiddenError('update this post');
+
+			return await ctx.prisma.posts.update({
+				where: { id },
+				data: {
+					...(input.title !== undefined && { title: input.title }),
+					...(input.description !== undefined && { description: input.description }),
+					...(input.categories !== undefined && { categories: input.categories })
+				}
+			});
 		},
 
 		deletePost: async (_: any, args: any, ctx: Context) => {
-			if (!ctx.currentUserId) throw new Error('Not authenticated');
+			if (!ctx.currentUserId) throw new NotAuthenticatedError();
 
-			// Verificar que el post existe y pertenece al usuario
 			const post = await ctx.prisma.posts.findUnique({ where: { id: args.id } });
-			if (!post) throw new Error('Post not found');
-			if (post.user_id !== ctx.currentUserId) {
-				throw new Error('Not authorized to delete this post');
-			}
+			if (!post) throw new NotFoundError('Post');
+			if (post.user_id !== ctx.currentUserId) throw new ForbiddenError('delete this post');
 
 			await ctx.prisma.posts.delete({ where: { id: args.id } });
 			return true;
 		},
 
 		likePost: async (_: any, args: any, ctx: Context) => {
-			if (!ctx.currentUserId) throw new Error('Not authenticated');
+			if (!ctx.currentUserId) throw new NotAuthenticatedError();
 			await ctx.prisma.likes.create({
 				data: { user_id: ctx.currentUserId, post_id: args.postId }
 			});
@@ -388,7 +393,7 @@ export const resolvers = {
 		},
 
 		unlikePost: async (_: any, args: any, ctx: Context) => {
-			if (!ctx.currentUserId) throw new Error('Not authenticated');
+			if (!ctx.currentUserId) throw new NotAuthenticatedError();
 			await ctx.prisma.likes.delete({
 				where: {
 					user_id_post_id: { user_id: ctx.currentUserId, post_id: args.postId }
@@ -398,7 +403,7 @@ export const resolvers = {
 		},
 
 		savePost: async (_: any, args: any, ctx: Context) => {
-			if (!ctx.currentUserId) throw new Error('Not authenticated');
+			if (!ctx.currentUserId) throw new NotAuthenticatedError();
 			await ctx.prisma.saved_posts.create({
 				data: { user_id: ctx.currentUserId, post_id: args.postId }
 			});
@@ -406,7 +411,7 @@ export const resolvers = {
 		},
 
 		unsavePost: async (_: any, args: any, ctx: Context) => {
-			if (!ctx.currentUserId) throw new Error('Not authenticated');
+			if (!ctx.currentUserId) throw new NotAuthenticatedError();
 			await ctx.prisma.saved_posts.delete({
 				where: { user_id_post_id: { user_id: ctx.currentUserId, post_id: args.postId } }
 			});
@@ -414,7 +419,7 @@ export const resolvers = {
 		},
 
 		viewPost: async (_: any, args: any, ctx: Context) => {
-			if (!ctx.currentUserId) throw new Error('Not authenticated');
+			if (!ctx.currentUserId) throw new NotAuthenticatedError();
 			await ctx.prisma.viewed_posts.upsert({
 				where: { user_id_post_id: { user_id: ctx.currentUserId, post_id: args.postId } },
 				create: { user_id: ctx.currentUserId, post_id: args.postId },
@@ -424,21 +429,19 @@ export const resolvers = {
 		},
 
 		commentOnPost: async (_: any, args: any, ctx: Context) => {
-			if (!ctx.currentUserId) throw new Error('Not authenticated');
+			if (!ctx.currentUserId) throw new NotAuthenticatedError();
+			const { text } = validate(CommentInputSchema, args);
 			return await ctx.prisma.comments.create({
-				data: { user_id: ctx.currentUserId, post_id: args.postId, text: args.text }
+				data: { user_id: ctx.currentUserId, post_id: args.postId, text }
 			});
 		},
 
 		deleteComment: async (_: any, args: any, ctx: Context) => {
-			if (!ctx.currentUserId) throw new Error('Not authenticated');
+			if (!ctx.currentUserId) throw new NotAuthenticatedError();
 
-			// Verificar que el comentario existe y pertenece al usuario
 			const comment = await ctx.prisma.comments.findUnique({ where: { id: args.commentId } });
-			if (!comment) throw new Error('Comment not found');
-			if (comment.user_id !== ctx.currentUserId) {
-				throw new Error('Not authorized to delete this comment');
-			}
+			if (!comment) throw new NotFoundError('Comment');
+			if (comment.user_id !== ctx.currentUserId) throw new ForbiddenError('delete this comment');
 
 			await ctx.prisma.comments.delete({ where: { id: args.commentId } });
 			return true;

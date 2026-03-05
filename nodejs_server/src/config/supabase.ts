@@ -1,22 +1,24 @@
 // src/config/supabase.ts
 import { createClient } from "@supabase/supabase-js";
-import dotenv from 'dotenv';
-dotenv.config();
 
 const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_ANON_KEY;
+const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
+const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-// Debug logging
-console.log("Supabase Config Loading:");
-console.log("URL:", supabaseUrl ? "Found" : "Missing");
-console.log("Key:", supabaseKey ? "Found" : "Missing");
-
-if (!supabaseUrl || !supabaseKey) {
-  console.warn("⚠️ WARNING: SUPABASE_URL or SUPABASE_ANON_KEY is missing in .env.");
-  console.warn("⚠️ Authentication features (Register/Login) will fail.");
+if (!supabaseUrl || !supabaseAnonKey) {
+  throw new Error('SUPABASE_URL and SUPABASE_ANON_KEY must be defined in .env');
 }
 
-export const supabase = createClient(
-  supabaseUrl || "https://placeholder.supabase.co", // Prevent crash on load
-  supabaseKey || "placeholder-key"
-);
+// Cliente público — para autenticar usuarios (signUp, signInWithPassword, getUser)
+export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
+// Cliente admin — para operaciones privilegiadas (escribir app_metadata, etc.)
+// Requiere SUPABASE_SERVICE_ROLE_KEY en .env (nunca exponerla al frontend)
+export const supabaseAdmin = supabaseServiceRoleKey
+  ? createClient(supabaseUrl, supabaseServiceRoleKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  })
+  : null;

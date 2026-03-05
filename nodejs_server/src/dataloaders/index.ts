@@ -1,5 +1,5 @@
 import DataLoader from 'dataloader';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from '../generated/prisma';
 
 export function createLoaders(prisma: PrismaClient, userId?: string) {
   return {
@@ -8,8 +8,6 @@ export function createLoaders(prisma: PrismaClient, userId?: string) {
     // PostgreSQL usa el índice automáticamente
     // ============================================
     user: new DataLoader(async (userIds: readonly string[]) => {
-      console.log(`📊 [DataLoader] Cargando ${userIds.length} usuarios en BATCH`);
-
       const users = await prisma.users.findMany({
         where: { id: { in: userIds as string[] } },
         include: {
@@ -19,15 +17,13 @@ export function createLoaders(prisma: PrismaClient, userId?: string) {
       });
 
       // Mantener el orden de los IDs solicitados
-      return userIds.map(id => users.find(u => u.id === id) || null);
+      return userIds.map(id => users.find((u: { id: string; }) => u.id === id) || null);
     }),
 
     // ============================================
     // POST MEDIA LOADER - USA idx_post_media_batch
     // ============================================
     postMedia: new DataLoader(async (postIds: readonly string[]) => {
-      console.log(`📊 [DataLoader] Cargando media de ${postIds.length} posts en BATCH`);
-
       const media = await prisma.post_media.findMany({
         where: { post_id: { in: postIds as string[] } },
         orderBy: { position: 'asc' }
@@ -35,7 +31,7 @@ export function createLoaders(prisma: PrismaClient, userId?: string) {
 
       // Agrupar por post_id
       return postIds.map(postId =>
-        media.filter(m => m.post_id === postId)
+        media.filter((m: { post_id: string; }) => m.post_id === postId)
       );
     }),
 
@@ -43,8 +39,6 @@ export function createLoaders(prisma: PrismaClient, userId?: string) {
     // LIKE COUNT LOADER - Cuenta likes en batch
     // ============================================
     likeCount: new DataLoader(async (postIds: readonly string[]) => {
-      console.log(`📊 [DataLoader] Contando likes de ${postIds.length} posts en BATCH`);
-
       const counts = await prisma.likes.groupBy({
         by: ['post_id'],
         where: { post_id: { in: postIds as string[] } },
@@ -52,7 +46,7 @@ export function createLoaders(prisma: PrismaClient, userId?: string) {
       });
 
       return postIds.map(postId => {
-        const result = counts.find(c => c.post_id === postId);
+        const result = counts.find((c: { post_id: string; }) => c.post_id === postId);
         return result?._count || 0;
       });
     }),
@@ -61,8 +55,6 @@ export function createLoaders(prisma: PrismaClient, userId?: string) {
     // COMMENT COUNT LOADER
     // ============================================
     commentCount: new DataLoader(async (postIds: readonly string[]) => {
-      console.log(`📊 [DataLoader] Contando comentarios de ${postIds.length} posts en BATCH`);
-
       const counts = await prisma.comments.groupBy({
         by: ['post_id'],
         where: { post_id: { in: postIds as string[] } },
@@ -70,7 +62,7 @@ export function createLoaders(prisma: PrismaClient, userId?: string) {
       });
 
       return postIds.map(postId => {
-        const result = counts.find(c => c.post_id === postId);
+        const result = counts.find((c: { post_id: string; }) => c.post_id === postId);
         return result?._count || 0;
       });
     }),
@@ -86,7 +78,7 @@ export function createLoaders(prisma: PrismaClient, userId?: string) {
       });
 
       return postIds.map(postId => {
-        const result = counts.find(c => c.post_id === postId);
+        const result = counts.find((c: { post_id: string; }) => c.post_id === postId);
         return result?._count || 0;
       });
     }),
@@ -102,7 +94,7 @@ export function createLoaders(prisma: PrismaClient, userId?: string) {
       });
 
       return postIds.map(postId => {
-        const result = counts.find(c => c.post_id === postId);
+        const result = counts.find((c: { post_id: string; }) => c.post_id === postId);
         return result?._count || 0;
       });
     }),
@@ -116,8 +108,6 @@ export function createLoaders(prisma: PrismaClient, userId?: string) {
           return keys.map(() => false);
         }
 
-        console.log(`📊 [DataLoader] Verificando ${keys.length} likes en BATCH`);
-
         const postIds = keys.map(k => k.postId);
 
         const likes = await prisma.likes.findMany({
@@ -128,7 +118,7 @@ export function createLoaders(prisma: PrismaClient, userId?: string) {
         });
 
         return keys.map(key =>
-          likes.some(like => like.post_id === key.postId)
+          likes.some((like: { post_id: string; }) => like.post_id === key.postId)
         );
       },
       { cacheKeyFn: (key) => `${userId}:${key.postId}` }
@@ -153,7 +143,7 @@ export function createLoaders(prisma: PrismaClient, userId?: string) {
         });
 
         return keys.map(key =>
-          saved.some(s => s.post_id === key.postId)
+          saved.some((s: { post_id: string; }) => s.post_id === key.postId)
         );
       },
       { cacheKeyFn: (key) => `${userId}:${key.postId}` }
@@ -178,7 +168,7 @@ export function createLoaders(prisma: PrismaClient, userId?: string) {
         });
 
         return keys.map(key =>
-          viewed.some(v => v.post_id === key.postId)
+          viewed.some((v: { post_id: string; }) => v.post_id === key.postId)
         );
       },
       { cacheKeyFn: (key) => `${userId}:${key.postId}` }
@@ -195,7 +185,7 @@ export function createLoaders(prisma: PrismaClient, userId?: string) {
       });
 
       return userIds.map(userId => {
-        const result = counts.find(c => c.followed_id === userId);
+        const result = counts.find((c: { followed_id: string; }) => c.followed_id === userId);
         return result?._count || 0;
       });
     }),
@@ -211,7 +201,7 @@ export function createLoaders(prisma: PrismaClient, userId?: string) {
       });
 
       return userIds.map(userId => {
-        const result = counts.find(c => c.follower_id === userId);
+        const result = counts.find((c: { follower_id: string; }) => c.follower_id === userId);
         return result?._count || 0;
       });
     }),
@@ -227,7 +217,7 @@ export function createLoaders(prisma: PrismaClient, userId?: string) {
       });
 
       return userIds.map(userId => {
-        const result = counts.find(c => c.user_id === userId);
+        const result = counts.find((c: { user_id: string; }) => c.user_id === userId);
         return result?._count || 0;
       });
     }),
@@ -251,7 +241,7 @@ export function createLoaders(prisma: PrismaClient, userId?: string) {
         });
 
         return keys.map(key =>
-          follows.some(f => f.followed_id === key.followedId)
+          follows.some((f: { followed_id: string; }) => f.followed_id === key.followedId)
         );
       },
       { cacheKeyFn: (key) => `${userId}:${key.followedId}` }
@@ -276,7 +266,7 @@ export function createLoaders(prisma: PrismaClient, userId?: string) {
         });
 
         return keys.map(key =>
-          follows.some(f => f.follower_id === key.followerId)
+          follows.some((f: { follower_id: string; }) => f.follower_id === key.followerId)
         );
       },
       { cacheKeyFn: (key) => `${key.followerId}:${userId}` }
@@ -286,8 +276,6 @@ export function createLoaders(prisma: PrismaClient, userId?: string) {
     // STORY VIEW COUNT LOADER
     // ============================================
     storyViewCount: new DataLoader(async (storyIds: readonly string[]) => {
-      console.log(`📊 [DataLoader] Contando vistas de ${storyIds.length} stories en BATCH`);
-
       const counts = await prisma.viewed_stories.groupBy({
         by: ['story_id'],
         where: { story_id: { in: storyIds as string[] } },
@@ -295,7 +283,7 @@ export function createLoaders(prisma: PrismaClient, userId?: string) {
       });
 
       return storyIds.map(storyId => {
-        const result = counts.find(c => c.story_id === storyId);
+        const result = counts.find((c: { story_id: string; }) => c.story_id === storyId);
         return result?._count || 0;
       });
     }),
@@ -309,8 +297,6 @@ export function createLoaders(prisma: PrismaClient, userId?: string) {
           return keys.map(() => false);
         }
 
-        console.log(`📊 [DataLoader] Verificando ${keys.length} vistas de stories en BATCH`);
-
         const storyIds = keys.map(k => k.storyId);
 
         const viewed = await prisma.viewed_stories.findMany({
@@ -321,7 +307,7 @@ export function createLoaders(prisma: PrismaClient, userId?: string) {
         });
 
         return keys.map(key =>
-          viewed.some(v => v.story_id === key.storyId)
+          viewed.some((v: { story_id: string; }) => v.story_id === key.storyId)
         );
       },
       { cacheKeyFn: (key) => `${userId}:${key.storyId}` }
@@ -331,8 +317,6 @@ export function createLoaders(prisma: PrismaClient, userId?: string) {
     // PLACE AVERAGE RATING LOADER
     // ============================================
     placeAverageRating: new DataLoader(async (placeIds: readonly string[]) => {
-      console.log(`📊 [DataLoader] Calculando rating promedio de ${placeIds.length} places en BATCH`);
-
       const ratings = await prisma.place_reviews.groupBy({
         by: ['place_id'],
         where: { place_id: { in: placeIds as string[] } },
@@ -340,17 +324,50 @@ export function createLoaders(prisma: PrismaClient, userId?: string) {
       });
 
       return placeIds.map(placeId => {
-        const result = ratings.find(r => r.place_id === placeId);
+        const result = ratings.find((r: { place_id: string; }) => r.place_id === placeId);
         return result?._avg.rating || null;
       });
     }),
 
+
+    // ============================================
+    // PERSON PROFILE LOADER
+    // Evita N+1 al cargar listas de usuarios
+    // (seguidores, siguiendo, likes, etc.)
+    // ============================================
+    personProfile: new DataLoader(async (userIds: readonly string[]) => {
+      const profiles = await prisma.person_profiles.findMany({
+        where: { user_id: { in: userIds as string[] } }
+      });
+      // Mantener el orden: si no hay perfil devolvemos null (usuario tipo RESTAURANT/BAR)
+      return userIds.map(id => profiles.find((p: { user_id: string; }) => p.user_id === id) ?? null);
+    }),
+
+    // ============================================
+    // BUSINESS PROFILE LOADER
+    // Evita N+1 al cargar listas con negocios
+    // ============================================
+    businessProfile: new DataLoader(async (userIds: readonly string[]) => {
+      const profiles = await prisma.business_profiles.findMany({
+        where: { user_id: { in: userIds as string[] } }
+      });
+      return userIds.map(id => profiles.find((p: { user_id: string; }) => p.user_id === id) ?? null);
+    }),
+
+    // ============================================
+    // USER SETTINGS LOADER
+    // Evita N+1 al cargar configuración de usuario
+    // ============================================
+    userSettings: new DataLoader(async (userIds: readonly string[]) => {
+      const settings = await prisma.user_settings.findMany({
+        where: { user_id: { in: userIds as string[] } }
+      });
+      return userIds.map(id => settings.find((s: { user_id: string; }) => s.user_id === id) ?? null);
+    }),
     // ============================================
     // PLACE REVIEW COUNT LOADER
     // ============================================
     placeReviewCount: new DataLoader(async (placeIds: readonly string[]) => {
-      console.log(`📊 [DataLoader] Contando reviews de ${placeIds.length} places en BATCH`);
-
       const counts = await prisma.place_reviews.groupBy({
         by: ['place_id'],
         where: { place_id: { in: placeIds as string[] } },
@@ -358,7 +375,7 @@ export function createLoaders(prisma: PrismaClient, userId?: string) {
       });
 
       return placeIds.map(placeId => {
-        const result = counts.find(c => c.place_id === placeId);
+        const result = counts.find((c: { place_id: string; }) => c.place_id === placeId);
         return result?._count || 0;
       });
     })

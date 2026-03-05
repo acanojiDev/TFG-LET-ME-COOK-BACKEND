@@ -1,20 +1,39 @@
 import { Context } from '../../../graphql/context';
 import { supabase } from '../../../config/supabase';
+import {
+	NotAuthenticatedError,
+	NotFoundError,
+	ConflictError,
+	requirePerson,
+	ForbiddenError
+} from '../../../graphql/errors';
+import {
+	validate,
+	RegisterInputSchema,
+	LoginInputSchema,
+	PersonProfileInputSchema,
+	BusinessProfileInputSchema,
+	UpdateAllergyInputSchema,
+	UpdatePreferenceInputSchema
+} from '../../../graphql/validation';
 
 export const resolvers = {
 	User: {
-		email: () => "user@example.com",
-
-		personProfile: async (parent: any, _: any, ctx: Context) => {
-			return await ctx.prisma.person_profiles.findUnique({
-				where: { user_id: parent.id }
-			});
+		email: async (parent: any, _: any, ctx: Context) => {
+			if (ctx.currentUserId && ctx.currentUserId === parent.id) {
+				return ctx.currentUserEmail ?? null;
+			}
+			return null;
 		},
 
-		businessProfile: async (parent: any, _: any, ctx: Context) => {
-			return await ctx.prisma.business_profiles.findUnique({
-				where: { user_id: parent.id }
-			});
+		// ✅ USA DataLoader — evita N+1 en listas de usuarios
+		personProfile: (parent: any, _: any, ctx: Context) => {
+			return ctx.loaders.personProfile.load(parent.id);
+		},
+
+		// ✅ USA DataLoader — evita N+1 en listas de negocios
+		businessProfile: (parent: any, _: any, ctx: Context) => {
+			return ctx.loaders.businessProfile.load(parent.id);
 		},
 
 		// ✅ AHORA: USA DataLoader
@@ -57,7 +76,7 @@ export const resolvers = {
 			});
 
 			const hasNextPage = follows.length > first;
-			const edges = follows.slice(0, first).map((f, index) => ({
+			const edges = follows.slice(0, first).map((f: any, index: number) => ({
 				node: f.follower,
 				cursor: (skip + index + 1).toString()
 			}));
@@ -88,7 +107,7 @@ export const resolvers = {
 			});
 
 			const hasNextPage = follows.length > first;
-			const edges = follows.slice(0, first).map((f, index) => ({
+			const edges = follows.slice(0, first).map((f: any, index: number) => ({
 				node: f.followed,
 				cursor: (skip + index + 1).toString()
 			}));
@@ -123,8 +142,6 @@ export const resolvers = {
 		},
 
 		userByUsername: async (_: any, args: any, ctx: Context) => {
-			console.log('📊 [Query] userByUsername - USA idx_person_profiles_username_idx');
-
 			const profile = await ctx.prisma.person_profiles.findUnique({
 				where: { username: args.username },
 				include: { user: true }
@@ -134,8 +151,6 @@ export const resolvers = {
 
 		searchUsers: async (_: any, args: any, ctx: Context) => {
 			const { query, first = 20 } = args;
-
-			console.log('📊 [Query] searchUsers - Búsqueda simple');
 
 			return await ctx.prisma.users.findMany({
 				where: {
@@ -158,35 +173,76 @@ export const resolvers = {
 	},
 
 	Mutation: {
-		// ✅ Mutations permanecen igual
 		register: async (_: any, args: any, ctx: Context) => {
-			const { email, password, userType, personData, businessData } = args;
+			const { email, password, userType, personData, businessData, allergenIds, preferenceIds } = validate(RegisterInputSchema, args);
 
-			const metaData: any = { user_type: userType };
+			// 1. Crear usuario en Supabase Auth
+			const { data: authData, error: authError } = await supabase.auth.signUp({ email, password });
+			if (authError) throw new ConflictError(authError.message);
+			if (!authData.user) throw new ConflictError('User creation failed');
 
-			if (userType === 'PERSON' && personData) {
-				Object.assign(metaData, personData);
-				if (personData.birthDate) metaData.birth_date = personData.birthDate;
-				if (personData.photoUrl) metaData.photo_url = personData.photoUrl;
-			} else if (businessData) {
-				Object.assign(metaData, businessData);
-				if (businessData.businessName) metaData.business_name = businessData.businessName;
-				if (businessData.photoUrl) metaData.photo_url = businessData.photoUrl;
-			}
+			const userId = authData.user.id;
 
-			const { data, error } = await supabase.auth.signUp({
-				email,
-				password,
-				options: { data: metaData }
+			// 2. Crear registro en tabla users
+			await ctx.prisma.users.upsert({
+				where: { id: userId },
+				create: { id: userId, user_type: userType, created_at: new Date(), updated_at: new Date() },
+				update: { updated_at: new Date() }
 			});
 
-			if (error) throw new Error(error.message);
-			if (!data.user) throw new Error('User creation failed');
+			// 3. Crear perfil según tipo de usuario
+			if (userType === 'PERSON') {
+				const username = personData?.username ?? email.split('@')[0].toLowerCase();
+				await ctx.prisma.person_profiles.upsert({
+					where: { user_id: userId },
+					create: {
+						user_id: userId,
+						username: username.toLowerCase(),
+						full_name: personData?.fullName ?? null,
+						photo_url: personData?.photoUrl ?? null,
+						bio: personData?.bio ?? null,
+						location: personData?.location ?? null,
+						birth_date: personData?.birthDate ? new Date(personData.birthDate) : new Date()
+					},
+					update: {} // ya existe: no sobreescribir en register
+				});
+			} else if ((userType === 'RESTAURANT' || userType === 'BAR') && businessData) {
+				await ctx.prisma.business_profiles.upsert({
+					where: { user_id: userId },
+					create: {
+						user_id: userId,
+						business_name: businessData.businessName ?? email.split('@')[0],
+						photo_url: businessData.photoUrl ?? null,
+						bio: businessData.bio ?? null,
+						location: businessData.location ?? '',
+						specialty: businessData.specialty ?? null,
+						phone: businessData.phone ?? null,
+						website: businessData.website ?? null
+					},
+					update: {} // ya existe: no sobreescribir en register
+				});
+			}
+
+			// 4. Guardar alergias y preferencias iniciales (solo PERSON)
+			if (userType === 'PERSON') {
+				if (allergenIds && allergenIds.length > 0) {
+					await ctx.prisma.user_allergies.createMany({
+						data: allergenIds.map((allergenId) => ({ user_id: userId, allergen_id: allergenId })),
+						skipDuplicates: true
+					});
+				}
+				if (preferenceIds && preferenceIds.length > 0) {
+					await ctx.prisma.user_preferences.createMany({
+						data: preferenceIds.map((preferenceId) => ({ user_id: userId, preference_id: preferenceId })),
+						skipDuplicates: true
+					});
+				}
+			}
 
 			return {
-				token: data.session?.access_token || "check-email-confirmation",
+				token: authData.session?.access_token ?? 'check-email-confirmation',
 				user: {
-					id: data.user.id,
+					id: userId,
 					email,
 					userType,
 					createdAt: new Date()
@@ -195,65 +251,139 @@ export const resolvers = {
 		},
 
 		login: async (_: any, args: any, ctx: Context) => {
-			const { data, error } = await supabase.auth.signInWithPassword({
-				email: args.email,
-				password: args.password
-			});
-			if (error) throw new Error(error.message);
+			const { email, password } = validate(LoginInputSchema, args);
+			const { data: authData, error: authError } = await supabase.auth.signInWithPassword({ email, password });
+			if (authError) throw new ConflictError(authError.message);
+			if (!authData.user || !authData.session) throw new ConflictError('Login failed');
 
-			const dbUser = await ctx.prisma.users.findUnique({ where: { id: data.user.id } });
+			const userId = authData.user.id;
+
+			// Recuperar o crear registro en BD (por si el usuario existía en Supabase pero no en la BD)
+			let dbUser = await ctx.prisma.users.findUnique({ where: { id: userId } });
+			if (!dbUser) {
+				dbUser = await ctx.prisma.users.create({
+					data: { id: userId, user_type: 'PERSON', created_at: new Date(), updated_at: new Date() }
+				});
+			}
 
 			return {
-				token: data.session.access_token,
+				token: authData.session.access_token,
 				user: {
-					id: data.user.id,
-					email: args.email,
-					userType: dbUser?.user_type || 'PERSON',
-					createdAt: new Date()
+					id: userId,
+					email,
+					userType: dbUser.user_type,
+					createdAt: dbUser.created_at
 				}
 			};
 		},
 
 		followUser: async (_: any, args: any, ctx: Context) => {
-			if (!ctx.currentUserId) throw new Error('Not authenticated');
-			await ctx.prisma.follows.create({
-				data: {
-					follower_id: ctx.currentUserId,
-					followed_id: args.userId
-				}
+			requirePerson(ctx, 'follow users');
+			const currentUserId = ctx.currentUserId as string;
+
+			if (currentUserId === args.userId) throw new ForbiddenError('No puedes seguirte a ti mismo');
+
+			const target = await ctx.prisma.users.findUnique({ where: { id: args.userId } });
+			if (!target) throw new NotFoundError('User');
+
+			// upsert evita error si el follow ya existe
+			await ctx.prisma.follows.upsert({
+				where: {
+					follower_id_followed_id: {
+						follower_id: currentUserId,
+						followed_id: args.userId
+					}
+				},
+				create: { follower_id: currentUserId, followed_id: args.userId },
+				update: {}
 			});
-			return await ctx.prisma.users.findUnique({
-				where: { id: args.userId }
-			});
+			return target;
 		},
 
 		unfollowUser: async (_: any, args: any, ctx: Context) => {
-			if (!ctx.currentUserId) throw new Error('Not authenticated');
-			await ctx.prisma.follows.delete({
+			requirePerson(ctx, 'unfollow users');
+			const currentUserId = ctx.currentUserId as string;
+
+			// deleteMany evita error si el follow no existe
+			await ctx.prisma.follows.deleteMany({
 				where: {
-					follower_id_followed_id: {
-						follower_id: ctx.currentUserId,
-						followed_id: args.userId
-					}
+					follower_id: currentUserId,
+					followed_id: args.userId
 				}
 			});
-			return await ctx.prisma.users.findUnique({
-				where: { id: args.userId }
-			});
+			return await ctx.prisma.users.findUnique({ where: { id: args.userId } });
 		},
 
 		updateProfile: async (_: any, args: any, ctx: Context) => {
-			if (!ctx.currentUserId) throw new Error('Not authenticated');
+			if (!ctx.currentUserId) throw new NotAuthenticatedError();
+			const { personData, businessData } = args;
+
+			const user = await ctx.prisma.users.findUnique({ where: { id: ctx.currentUserId } });
+			if (!user) throw new NotFoundError('User');
+
+			if (user.user_type === 'PERSON' && personData) {
+				const data = validate(PersonProfileInputSchema, personData);
+				await ctx.prisma.person_profiles.update({
+					where: { user_id: ctx.currentUserId },
+					data: {
+						...(data.username && { username: data.username }),
+						...(data.fullName !== undefined && { full_name: data.fullName }),
+						...(data.photoUrl !== undefined && { photo_url: data.photoUrl }),
+						...(data.bio !== undefined && { bio: data.bio }),
+						...(data.location !== undefined && { location: data.location }),
+						...(data.birthDate !== undefined && { birth_date: data.birthDate ? new Date(data.birthDate) : undefined })
+					}
+				});
+			} else if ((user.user_type === 'RESTAURANT' || user.user_type === 'BAR') && businessData) {
+				const data = validate(BusinessProfileInputSchema, businessData);
+				await ctx.prisma.business_profiles.update({
+					where: { user_id: ctx.currentUserId },
+					data: {
+						...(data.businessName && { business_name: data.businessName }),
+						...(data.photoUrl !== undefined && { photo_url: data.photoUrl }),
+						...(data.bio !== undefined && { bio: data.bio }),
+						...(data.location !== undefined && { location: data.location ?? '' }),
+						...(data.specialty !== undefined && { specialty: data.specialty }),
+						...(data.phone !== undefined && { phone: data.phone }),
+						...(data.website !== undefined && { website: data.website })
+					}
+				});
+			}
+
 			return await ctx.prisma.users.findUnique({ where: { id: ctx.currentUserId } });
 		},
 
 		updateAllergies: async (_: any, args: any, ctx: Context) => {
-			if (!ctx.currentUserId) throw new Error('Not authenticated');
+			requirePerson(ctx, 'update allergies');
+			const { allergenIds } = validate(UpdateAllergyInputSchema, args);
+
+			await ctx.prisma.user_allergies.deleteMany({ where: { user_id: ctx.currentUserId } });
+			if (allergenIds.length > 0) {
+				await ctx.prisma.user_allergies.createMany({
+					data: allergenIds.map((allergenId) => ({
+						user_id: ctx.currentUserId as string,
+						allergen_id: allergenId
+					}))
+				});
+			}
+
 			return await ctx.prisma.users.findUnique({ where: { id: ctx.currentUserId } });
 		},
 
 		updatePreferences: async (_: any, args: any, ctx: Context) => {
-			if (!ctx.currentUserId) throw new Error('Not authenticated');
+			requirePerson(ctx, 'update preferences');
+			const { preferenceIds } = validate(UpdatePreferenceInputSchema, args);
+
+			await ctx.prisma.user_preferences.deleteMany({ where: { user_id: ctx.currentUserId } });
+			if (preferenceIds.length > 0) {
+				await ctx.prisma.user_preferences.createMany({
+					data: preferenceIds.map((preferenceId) => ({
+						user_id: ctx.currentUserId as string,
+						preference_id: preferenceId
+					}))
+				});
+			}
+
 			return await ctx.prisma.users.findUnique({ where: { id: ctx.currentUserId } });
 		}
 	}

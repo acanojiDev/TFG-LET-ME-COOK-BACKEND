@@ -1,10 +1,11 @@
 import { Context } from '../../../graphql/context';
+import { NotAuthenticatedError, NotFoundError, ForbiddenError } from '../../../graphql/errors';
+import { validate, CreateStoryInputSchema } from '../../../graphql/validation';
 
 export const resolvers = {
 	Story: {
 		// ✅ AHORA: USA DataLoader
 		user: (parent: any, _: any, ctx: Context) => {
-			console.log('📊 [Resolver] Story.user - USA DataLoader');
 			return ctx.loaders.user.load(parent.user_id);
 		},
 
@@ -29,7 +30,7 @@ export const resolvers = {
 				include: { user: true },
 				orderBy: { viewed_at: 'desc' }
 			});
-			return viewedStories.map(vs => vs.user);
+			return viewedStories.map((vs: { user: any; }) => vs.user);
 		}
 	},
 
@@ -54,7 +55,7 @@ export const resolvers = {
 				where: { follower_id: ctx.currentUserId },
 				select: { followed_id: true }
 			});
-			const followingIds = following.map(f => f.followed_id);
+			const followingIds = following.map((f: { followed_id: any; }) => f.followed_id);
 
 			return await ctx.prisma.stories.findMany({
 				where: {
@@ -68,8 +69,8 @@ export const resolvers = {
 
 	Mutation: {
 		createStory: async (_: any, args: any, ctx: Context) => {
-			if (!ctx.currentUserId) throw new Error('Not authenticated');
-			const { input } = args;
+			if (!ctx.currentUserId) throw new NotAuthenticatedError();
+			const input = validate(CreateStoryInputSchema, args.input);
 			const expiresAt = new Date();
 			expiresAt.setHours(expiresAt.getHours() + 24);
 
@@ -84,21 +85,18 @@ export const resolvers = {
 		},
 
 		deleteStory: async (_: any, args: any, ctx: Context) => {
-			if (!ctx.currentUserId) throw new Error('Not authenticated');
+			if (!ctx.currentUserId) throw new NotAuthenticatedError();
 
-			// Verificar que la story existe y pertenece al usuario
 			const story = await ctx.prisma.stories.findUnique({ where: { id: args.id } });
-			if (!story) throw new Error('Story not found');
-			if (story.user_id !== ctx.currentUserId) {
-				throw new Error('Not authorized to delete this story');
-			}
+			if (!story) throw new NotFoundError('Story');
+			if (story.user_id !== ctx.currentUserId) throw new ForbiddenError('delete this story');
 
 			await ctx.prisma.stories.delete({ where: { id: args.id } });
 			return true;
 		},
 
 		viewStory: async (_: any, args: any, ctx: Context) => {
-			if (!ctx.currentUserId) throw new Error('Not authenticated');
+			if (!ctx.currentUserId) throw new NotAuthenticatedError();
 			await ctx.prisma.viewed_stories.upsert({
 				where: {
 					user_id_story_id: {

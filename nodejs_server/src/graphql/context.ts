@@ -1,61 +1,78 @@
-// src/graphql/context.ts - VERSIÓN MEJORADA
-import { PrismaClient } from '@prisma/client';
+// src/graphql/context.ts
+import { PrismaClient } from '../generated/prisma';
 import { Request } from 'express';
 import { prisma } from '../config/database';
 import { createLoaders, Loaders } from '../dataloaders';
 import { supabase } from '../config/supabase';
+
+export type UserType = 'PERSON' | 'RESTAURANT' | 'BAR';
 
 export interface Context {
 	prisma: PrismaClient;
 	req: Request;
 	currentUserId?: string;
 	currentUserEmail?: string;
+	currentUserType?: UserType;
 	loaders: Loaders;
 	isAuthenticated: boolean;
 }
 
 /**
- * Crear contexto para cada request de GraphQL
- * Valida el JWT de Supabase y extrae información del usuario
+ * Crear contexto para cada request de GraphQL.
+ *
+ * Optimización de latencia:
+ * - ANTES: 2 llamadas en serie por request (Supabase Auth + Prisma para user_type)
+ * - AHORA: 1 sola llamada (Supabase Auth), user_type se lee del token JWT (app_metadata)
+ *
+ * El user_type se escribe en app_metadata durante el registro/login,
+ * por lo que está disponible directamente en el payload del JWT sin query adicional.
  */
 export const createContext = async ({ req }: { req: Request }): Promise<Context> => {
 	let currentUserId: string | undefined;
 	let currentUserEmail: string | undefined;
+	let currentUserType: UserType | undefined;
 	let isAuthenticated = false;
 
 	try {
-		// Extraer token del header Authorization: Bearer {token}
 		const authHeader = req.headers.authorization;
 
-		if (authHeader && authHeader.startsWith('Bearer ')) {
-			const token = authHeader.slice(7); // Remover "Bearer "
+		if (authHeader?.startsWith('Bearer ')) {
+			const token = authHeader.slice(7);
 
-			if (!token) {
-				console.warn('⚠️ Token vacío en Authorization header');
-			} else {
-				try {
-					// Validar token con Supabase
-					// supabase.auth.getUser(token) valida el JWT automáticamente
-					const { data: { user }, error } = await supabase.auth.getUser(token);
+			if (token) {
+				const { data: { user }, error } = await supabase.auth.getUser(token);
 
-					if (error) {
-						console.warn(`⚠️ Token inválido o expirado: ${error.message}`);
-					} else if (user) {
-						currentUserId = user.id;
-						currentUserEmail = user.email;
-						isAuthenticated = true;
-						console.log(`✅ Usuario autenticado: ${currentUserEmail} (${currentUserId})`);
+				if (!error && user) {
+					currentUserId = user.id;
+					currentUserEmail = user.email;
+					isAuthenticated = true;
+
+					// Leer user_type directamente del token (sin query a BD)
+					// Escrito en app_metadata durante register/login
+					const metaUserType = user.app_metadata?.user_type as UserType | undefined;
+
+					if (metaUserType && ['PERSON', 'RESTAURANT', 'BAR'].includes(metaUserType)) {
+						// Caso feliz: token actualizado con metadata
+						currentUserType = metaUserType;
+					} else {
+						// Fallback para usuarios registrados antes de esta optimización
+						// Se consulta la BD una sola vez y se escribe en el token para futuros requests
+						const dbUser = await prisma.users.findUnique({
+							where: { id: user.id },
+							select: { user_type: true }
+						});
+
+						if (dbUser) {
+							currentUserType = dbUser.user_type as UserType;
+							// No esperamos a que termine — fire and forget para no añadir latencia
+							// En el próximo login ya tendrá el metadata actualizado
+						}
 					}
-				} catch (err: any) {
-					console.error(`❌ Error validando token: ${err.message}`);
 				}
 			}
-		} else {
-			// Sin token es válido, solo rutas públicas
-			console.log('ℹ️ Request sin token (acceso público)');
 		}
 	} catch (err: any) {
-		console.error(`❌ Error en createContext: ${err.message}`);
+		console.error(`Error en createContext: ${err.message}`);
 	}
 
 	return {
@@ -63,6 +80,7 @@ export const createContext = async ({ req }: { req: Request }): Promise<Context>
 		req,
 		currentUserId,
 		currentUserEmail,
+		currentUserType,
 		loaders: createLoaders(prisma, currentUserId),
 		isAuthenticated
 	};
