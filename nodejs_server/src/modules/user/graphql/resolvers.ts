@@ -19,6 +19,9 @@ import {
 
 export const resolvers = {
 	User: {
+		userType: (parent: any) => parent.userType ?? parent.user_type,
+		createdAt: (parent: any) => parent.createdAt ?? parent.created_at,
+
 		email: async (parent: any, _: any, ctx: Context) => {
 			if (ctx.currentUserId && ctx.currentUserId === parent.id) {
 				return ctx.currentUserEmail ?? null;
