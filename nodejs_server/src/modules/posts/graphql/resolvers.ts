@@ -4,6 +4,10 @@ import { validate, CreatePostInputSchema, UpdatePostInputSchema, CommentInputSch
 
 export const resolvers = {
 	Post: {
+		postType: (parent: any) => parent.postType ?? parent.post_type,
+		createdAt: (parent: any) => parent.createdAt ?? parent.created_at,
+		updatedAt: (parent: any) => parent.updatedAt ?? parent.updated_at,
+
 		// ✅ AHORA: USA DataLoader (batch)
 		user: (parent: any, _: any, ctx: Context) => {
 			return ctx.loaders.user.load(parent.user_id);
@@ -103,8 +107,16 @@ export const resolvers = {
 		}
 	},
 
+	PostMedia: {
+		postId: (parent: any) => parent.postId ?? parent.post_id,
+		mediaUrl: (parent: any) => parent.mediaUrl ?? parent.media_url,
+		mediaType: (parent: any) => parent.mediaType ?? parent.media_type,
+	},
+
 	// ✅ Agregar resolver para Comment.user
 	Comment: {
+		createdAt: (parent: any) => parent.createdAt ?? parent.created_at,
+
 		user: (parent: any, _: any, ctx: Context) => {
 			return ctx.loaders.user.load(parent.user_id);
 		},
@@ -152,6 +164,10 @@ export const resolvers = {
 	},
 
 	Recipe: {
+		postId: (parent: any) => parent.postId ?? parent.post_id,
+		timeRequired: (parent: any) => parent.timeRequired ?? parent.time_required,
+		estimatedCost: (parent: any) => parent.estimatedCost ?? parent.estimated_cost,
+
 		ingredients: async (parent: any, _: any, ctx: Context) => {
 			const recipeIngredients = await ctx.prisma.recipe_ingredients.findMany({
 				where: { recipe_id: parent.id },

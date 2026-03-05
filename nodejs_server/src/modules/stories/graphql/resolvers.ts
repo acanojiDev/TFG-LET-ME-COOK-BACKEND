@@ -4,6 +4,11 @@ import { validate, CreateStoryInputSchema } from '../../../graphql/validation';
 
 export const resolvers = {
 	Story: {
+		storyType: (parent: any) => parent.storyType ?? parent.story_type,
+		mediaUrl: (parent: any) => parent.mediaUrl ?? parent.media_url,
+		createdAt: (parent: any) => parent.createdAt ?? parent.created_at,
+		expiresAt: (parent: any) => parent.expiresAt ?? parent.expires_at,
+
 		// ✅ AHORA: USA DataLoader
 		user: (parent: any, _: any, ctx: Context) => {
 			return ctx.loaders.user.load(parent.user_id);

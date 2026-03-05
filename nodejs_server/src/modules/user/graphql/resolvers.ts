@@ -18,6 +18,19 @@ import {
 } from '../../../graphql/validation';
 
 export const resolvers = {
+	PersonProfile: {
+		userId: (parent: any) => parent.userId ?? parent.user_id,
+		fullName: (parent: any) => parent.fullName ?? parent.full_name,
+		photoUrl: (parent: any) => parent.photoUrl ?? parent.photo_url,
+		birthDate: (parent: any) => parent.birthDate ?? parent.birth_date,
+	},
+
+	BusinessProfile: {
+		userId: (parent: any) => parent.userId ?? parent.user_id,
+		businessName: (parent: any) => parent.businessName ?? parent.business_name,
+		photoUrl: (parent: any) => parent.photoUrl ?? parent.photo_url,
+	},
+
 	User: {
 		userType: (parent: any) => parent.userType ?? parent.user_type,
 		createdAt: (parent: any) => parent.createdAt ?? parent.created_at,

@@ -3,7 +3,22 @@ import { requirePerson } from '../../../graphql/errors';
 import { validate, ReviewPlaceInputSchema } from '../../../graphql/validation';
 
 export const resolvers = {
+	PlaceReview: {
+		photoUrl: (parent: any) => parent.photoUrl ?? parent.photo_url,
+		createdAt: (parent: any) => parent.createdAt ?? parent.created_at,
+		user: (parent: any, _: any, ctx: Context) => {
+			return ctx.loaders.user.load(parent.user_id);
+		},
+		place: async (parent: any, _: any, ctx: Context) => {
+			return await ctx.prisma.places.findUnique({ where: { id: parent.place_id } });
+		},
+	},
+
 	Place: {
+		mediaUrl: (parent: any) => parent.mediaUrl ?? parent.media_url,
+		placeType: (parent: any) => parent.placeType ?? parent.place_type,
+		isOpen: (parent: any) => parent.isOpen ?? parent.is_open,
+
 		// ✅ AHORA: USA DataLoader
 		averageRating: (parent: any, _: any, ctx: Context) => {
 			return ctx.loaders.placeAverageRating.load(parent.id);
